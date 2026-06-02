@@ -23,6 +23,8 @@ const corsOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
