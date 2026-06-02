@@ -55,7 +55,6 @@ async function startServer() {
   await connectDatabase();
   await ensureOrderIndexes();
   await expireStalePendingOrders();
-  await verifyEmailConnection();
 
   const googleIds = getGoogleClientIds();
 
@@ -67,6 +66,10 @@ async function startServer() {
 
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+
+    verifyEmailConnection().catch((error) => {
+      console.error("[Email] Gmail SMTP verify failed:", error.message);
+    });
   });
 
   setInterval(() => {
