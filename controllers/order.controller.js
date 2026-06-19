@@ -8,7 +8,11 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatOrder, formatProduct } from "../utils/formatters.js";
 import { ApiError, throwIfInvalid } from "../utils/apiError.js";
 import { validatePlaceOrder } from "../validators/order.validator.js";
-import { assignLicenseKeysToOrder } from "../utils/licenseKey.js";
+import {
+  assignLicenseKeysToOrder,
+  releaseKeysForOrder,
+  reserveKeysForOrder,
+} from "../utils/licenseKey.js";
 import { getSalePriceFromDoc } from "../utils/dataNormalization.js";
 import { resolvePurchaseVariant } from "../utils/productVariants.js";
 import { validateCoupon } from "../utils/couponHelpers.js";
@@ -27,6 +31,7 @@ import {
   shouldClaimCouponImmediately,
   shouldDeductStockImmediately,
 } from "../utils/orderLifecycle.js";
+import { countAvailableKeys, isPoolProduct } from "../utils/licenseKeyPool.js";
 
 function generateOrderId() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -86,7 +91,18 @@ async function validateAndFulfillOrderItems(items = [], session = null) {
     }
 
     if (dbProduct.stock < quantity) {
-      throw new ApiError(400, `Insufficient stock for "${dbProduct.name}"`);
+      throw new ApiError(400, `Sản phẩm "${dbProduct.name}" đã hết hàng`);
+    }
+
+    if (isPoolProduct(dbProduct)) {
+      const availableKeys = await countAvailableKeys(productId, session);
+
+      if (availableKeys < quantity) {
+        throw new ApiError(
+          400,
+          `Sản phẩm "${dbProduct.name}" đã hết key trong kho`,
+        );
+      }
     }
 
     const variant = resolvePurchaseVariant(dbProduct, item.variant);
@@ -250,6 +266,10 @@ export const createOrder = asyncHandler(async (req, res) => {
 
       if (stockDeducted) {
         await decrementStockForItems(fulfilledItems, session);
+        await reserveKeysForOrder(
+          { orderId, items: fulfilledItems },
+          session,
+        );
       }
 
       const [createdOrder] = await OrderModel.create(

@@ -8,6 +8,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed:catalog": "node scripts/seedCatalog.js",
+    "seed:keys": "node scripts/seedLicenseKeyPool.js",
+    "seed:admin": "node scripts/seedAdmin.js",
     "test": "node --test"
   },
   "keywords": [],

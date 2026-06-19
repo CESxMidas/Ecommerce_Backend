@@ -12,7 +12,14 @@ import {
   deleteBlog,
   updateBlog,
 } from "../controllers/blog.controller.js";
+import {
+  getProductKeyStats,
+  importProductKeys,
+  listProductKeys,
+  revokeProductKey,
+} from "../controllers/admin.licenseKey.controller.js";
 import { getDashboardStats } from "../controllers/admin.controller.js";
+import { adminGetProducts } from "../controllers/product.controller.js";
 import {
   uploadImage,
   uploadMiddleware,
@@ -37,5 +44,11 @@ router.put("/blogs/:id", updateBlog);
 router.delete("/blogs/:id", deleteBlog);
 
 router.post("/upload", uploadMiddleware, uploadImage);
+
+router.get("/products", adminGetProducts);
+router.get("/products/:productId/keys/stats", getProductKeyStats);
+router.get("/products/:productId/keys", listProductKeys);
+router.post("/products/:productId/keys/import", importProductKeys);
+router.delete("/products/:productId/keys/:keyId", revokeProductKey);
 
 export default router;

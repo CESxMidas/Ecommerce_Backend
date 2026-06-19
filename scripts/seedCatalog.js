@@ -7,7 +7,9 @@ import CouponModel from "../models/coupon.model.js";
 import BannerModel from "../models/banner.model.js";
 import BlogModel from "../models/blog.model.js";
 import ReviewModel from "../models/review.model.js";
+import LicenseKeyModel from "../models/licenseKey.model.js";
 import { buildCategoryMap, normalizeSeedCategory, normalizeSeedProduct } from "../utils/dataNormalization.js";
+import { seedLicenseKeyPoolForProducts } from "./seedLicenseKeyPool.js";
 
 dotenv.config();
 
@@ -171,7 +173,9 @@ const products = [
     stock: 120,
     rating: 4.7,
     reviewsCount: 26,
-    images: ["/images/bypass/cerberus-banner.png"],
+    images: [
+      "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop",
+    ],
     attributes: {
       game: "PUBG Mobile",
       delivery: "License key",
@@ -297,7 +301,9 @@ const products = [
     stock: 40,
     rating: 4.5,
     reviewsCount: 14,
-    images: ["/images/bypass/snake-app.png"],
+    images: [
+      "https://images.unsplash.com/photo-1633419461186-7d40a38105ec?q=80&w=1200&auto=format&fit=crop",
+    ],
   },
   {
     id: 10,
@@ -467,7 +473,8 @@ const banners = [
   {
     title: "Instant keys after VNPay",
     subtitle: "License keys and redeem codes are delivered only after payment confirmation.",
-    image: "/images/bypass/cerberus-banner.png",
+    image:
+      "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1920&auto=format&fit=crop",
     link: "/productListing?category=license-keys",
     placement: "home_slider",
     sortOrder: 1,
@@ -475,7 +482,8 @@ const banners = [
   {
     title: "Digital accounts handled safely",
     subtitle: "Account products are prepared by support after online payment.",
-    image: "https://images.unsplash.com/photo-1633419461186-7d40a38105ec?q=80&w=1200&auto=format&fit=crop",
+    image:
+      "https://images.unsplash.com/photo-1633419461186-7d40a38105ec?q=80&w=1920&auto=format&fit=crop",
     link: "/productListing?category=accounts",
     placement: "home_slider",
     sortOrder: 2,
@@ -483,10 +491,29 @@ const banners = [
   {
     title: "Hardware supports COD",
     subtitle: "Computers, components and accessories can use VNPay or COD.",
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=1200&auto=format&fit=crop",
+    image:
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=1200&auto=format&fit=crop",
     link: "/productListing?category=hardware",
     placement: "ads",
     sortOrder: 1,
+  },
+  {
+    title: "Premium software deals",
+    subtitle: "Productivity tools and utilities for work and study.",
+    image:
+      "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop",
+    link: "/productListing?category=software",
+    placement: "ads",
+    sortOrder: 2,
+  },
+  {
+    title: "Gaming essentials",
+    subtitle: "Trending games and gaming gear in one place.",
+    image:
+      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=1200&auto=format&fit=crop",
+    link: "/deals",
+    placement: "ads",
+    sortOrder: 3,
   },
 ];
 
@@ -519,6 +546,7 @@ async function resetCollections() {
     BannerModel.deleteMany({}),
     BlogModel.deleteMany({}),
     ReviewModel.deleteMany({}),
+    LicenseKeyModel.deleteMany({}),
   ]);
 }
 
@@ -546,12 +574,19 @@ async function seed() {
   await BannerModel.insertMany(banners);
   await BlogModel.insertMany(blogs);
 
+  const insertedProducts = await ProductModel.find({
+    productType: { $in: ["license_key", "redeem_code"] },
+    deliveryType: "instant_key",
+  });
+  const poolImported = await seedLicenseKeyPoolForProducts(insertedProducts);
+
   console.log("Catalog seed complete");
   console.log(`Categories: ${normalizedCategories.length}`);
   console.log(`Products: ${normalizedProducts.length}`);
   console.log(`Coupons: ${coupons.length}`);
   console.log(`Banners: ${banners.length}`);
   console.log(`Blogs: ${blogs.length}`);
+  console.log(`License keys in pool: ${poolImported}`);
 }
 
 seed()

@@ -11,7 +11,7 @@ import { markPaymentPaid } from "../services/payment.service.js";
 import { markPaymentFailed } from "../utils/orderLifecycle.js";
 
 function getClientRedirect(path) {
-  const clientOrigin = (process.env.CORS_ORIGIN || "http://localhost:5173")
+  const clientOrigin = (process.env.CORS_ORIGIN || "http://localhost:3000")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean)[0];
@@ -22,7 +22,7 @@ function getClientRedirect(path) {
 function getOrderRedirect(order, paymentResult) {
   const orderId = encodeURIComponent(order.orderId);
 
-  return getClientRedirect(`/orders/${orderId}?payment=${paymentResult}`);
+  return getClientRedirect(`/account/orders/${orderId}?payment=${paymentResult}`);
 }
 
 export const vnpayReturn = asyncHandler(async (req, res) => {
