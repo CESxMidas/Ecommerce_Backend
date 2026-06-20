@@ -12,12 +12,18 @@ import {
   deleteBlog,
   updateBlog,
 } from "../controllers/blog.controller.js";
+import { adminGetCategories } from "../controllers/category.controller.js";
 import {
   getProductKeyStats,
   importProductKeys,
   listProductKeys,
   revokeProductKey,
 } from "../controllers/admin.licenseKey.controller.js";
+import {
+  adminGetUserById,
+  adminGetUsers,
+  adminUpdateUser,
+} from "../controllers/admin.user.controller.js";
 import { getDashboardStats } from "../controllers/admin.controller.js";
 import { adminGetProducts } from "../controllers/product.controller.js";
 import {
@@ -32,6 +38,12 @@ const router = Router();
 router.use(protect, adminOnly);
 
 router.get("/stats", getDashboardStats);
+
+router.get("/categories", adminGetCategories);
+
+router.get("/users", adminGetUsers);
+router.get("/users/:id", adminGetUserById);
+router.patch("/users/:id", adminUpdateUser);
 
 router.get("/banners", adminGetBanners);
 router.post("/banners", createBanner);

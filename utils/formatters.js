@@ -201,6 +201,44 @@ export function formatProfile(user) {
   };
 }
 
+export function formatAdminUser(user, orderCount = 0) {
+  const doc = user.toObject ? user.toObject() : user;
+
+  return {
+    id: String(doc._id),
+    name: doc.name || "",
+    email: doc.email || "",
+    avatar: doc.avatar || "",
+    role: doc.role || "USER",
+    verifyEmail: Boolean(doc.verify_email),
+    authProvider: doc.authProvider || "local",
+    status: doc.status || "Active",
+    createdAt: doc.createdAt
+      ? new Date(doc.createdAt).toISOString()
+      : new Date().toISOString(),
+    orderCount: Number(orderCount || 0),
+  };
+}
+
+export function formatAdminUserDetail(user, orderCount = 0) {
+  const doc = user.toObject ? user.toObject() : user;
+  const base = formatAdminUser(user, orderCount);
+
+  return {
+    ...base,
+    mobile: doc.mobile || "",
+    phoneVerified: Boolean(doc.phoneVerified),
+    twoFactorEnabled: Boolean(doc.twoFactorEnabled),
+    lastLoginAt: doc.last_login_date
+      ? new Date(doc.last_login_date).toISOString()
+      : null,
+    gender: doc.gender || "",
+    dateOfBirth: doc.dateOfBirth
+      ? new Date(doc.dateOfBirth).toISOString()
+      : null,
+  };
+}
+
 export function formatOrder(order) {
   const doc = order.toObject ? order.toObject() : order;
   const canRevealLicenseKeys = doc.paymentStatus === "paid";

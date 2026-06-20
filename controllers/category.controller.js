@@ -12,6 +12,50 @@ import {
   rollupProductCounts,
 } from "../utils/categoryHelpers.js";
 
+async function assertValidParent(categoryId, parentId) {
+  if (parentId == null || parentId === "") {
+    return;
+  }
+
+  const normalizedParentId = Number(parentId);
+
+  if (Number.isNaN(normalizedParentId)) {
+    throw new ApiError(400, "Parent category ID is invalid");
+  }
+
+  if (categoryId != null && normalizedParentId === Number(categoryId)) {
+    throw new ApiError(400, "Category cannot be its own parent");
+  }
+
+  const parent = await CategoryModel.findOne({ categoryId: normalizedParentId });
+
+  if (!parent) {
+    throw new ApiError(400, "Parent category not found");
+  }
+
+  if (categoryId == null) {
+    return;
+  }
+
+  let current = parent;
+
+  while (current?.parentId != null) {
+    if (Number(current.parentId) === Number(categoryId)) {
+      throw new ApiError(400, "Invalid parent category: would create a cycle");
+    }
+
+    current = await CategoryModel.findOne({ categoryId: current.parentId });
+  }
+}
+
+function mapCategoriesWithCounts(categories, countMap) {
+  return categories.map((category) => ({
+    ...formatCategory(category),
+    categoryId: category.categoryId,
+    productCount: countMap[category.categoryId] || 0,
+  }));
+}
+
 export const getCategories = asyncHandler(async (request, response) => {
   const flat = request.query.flat === "true";
 
@@ -33,6 +77,16 @@ export const getCategories = asyncHandler(async (request, response) => {
   const tree = await buildCategoryTreeFromDb();
 
   response.json(tree);
+});
+
+export const adminGetCategories = asyncHandler(async (request, response) => {
+  const categories = await CategoryModel.find({}).sort({
+    sortOrder: 1,
+    categoryId: 1,
+  });
+  const countMap = await getProductCountMap();
+
+  response.json(mapCategoriesWithCounts(categories, countMap));
 });
 
 export const getCategoryById = asyncHandler(async (request, response) => {
@@ -87,18 +141,30 @@ export const createCategory = asyncHandler(async (request, response) => {
     throw new ApiError(400, "Category name is required");
   }
 
+  const slug = request.body.slug?.trim().toLowerCase();
+
+  if (slug) {
+    const existingSlug = await CategoryModel.findOne({ slug });
+    if (existingSlug) {
+      throw new ApiError(400, "Category slug already exists");
+    }
+  }
+
+  await assertValidParent(null, request.body.parentId ?? null);
+
   const last = await CategoryModel.findOne().sort({ categoryId: -1 });
   const categoryId = (last?.categoryId || 0) + 1;
 
   const category = await CategoryModel.create({
     categoryId,
     name: name.trim(),
-    slug: request.body.slug?.trim().toLowerCase() || `category-${categoryId}`,
+    slug: slug || `category-${categoryId}`,
     image: image || "",
     description: request.body.description || "",
     icon: request.body.icon || "default",
     parentId: request.body.parentId ?? null,
     sortOrder: request.body.sortOrder ?? categoryId,
+    isActive: request.body.isActive !== false,
   });
 
   response.status(201).json(formatCategory(category));
@@ -108,11 +174,29 @@ export const updateCategory = asyncHandler(async (request, response) => {
   throwIfInvalid(validateCategoryPayload(request.body, { partial: true }));
 
   const categoryId = Number(request.params.id);
+  const payload = { ...request.body };
+
+  if (payload.slug != null) {
+    payload.slug = String(payload.slug).trim().toLowerCase();
+
+    const existingSlug = await CategoryModel.findOne({
+      slug: payload.slug,
+      categoryId: { $ne: categoryId },
+    });
+
+    if (existingSlug) {
+      throw new ApiError(400, "Category slug already exists");
+    }
+  }
+
+  if (payload.parentId !== undefined) {
+    await assertValidParent(categoryId, payload.parentId ?? null);
+  }
 
   const category = await CategoryModel.findOneAndUpdate(
     { categoryId },
-    request.body,
-    { new: true },
+    payload,
+    { new: true, runValidators: true },
   );
 
   if (!category) {
@@ -125,11 +209,44 @@ export const updateCategory = asyncHandler(async (request, response) => {
 export const deleteCategory = asyncHandler(async (request, response) => {
   const categoryId = Number(request.params.id);
 
-  const category = await CategoryModel.findOneAndDelete({ categoryId });
+  const category = await CategoryModel.findOne({ categoryId });
 
   if (!category) {
     throw new ApiError(404, "Category not found");
   }
 
-  response.json({ message: "Category deleted" });
+  const childCount = await CategoryModel.countDocuments({
+    parentId: categoryId,
+    isActive: true,
+  });
+
+  if (childCount > 0) {
+    throw new ApiError(
+      400,
+      "Cannot deactivate category while it still has active child categories",
+    );
+  }
+
+  const productCount = await ProductModel.countDocuments({
+    categoryId,
+    isActive: true,
+  });
+
+  if (productCount > 0) {
+    throw new ApiError(
+      400,
+      "Cannot deactivate category while it still has active products",
+    );
+  }
+
+  const updated = await CategoryModel.findOneAndUpdate(
+    { categoryId },
+    { isActive: false },
+    { new: true },
+  );
+
+  response.json({
+    message: "Category deactivated",
+    category: formatCategory(updated),
+  });
 });
