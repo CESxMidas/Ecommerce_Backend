@@ -10,6 +10,7 @@
     "seed:catalog": "node scripts/seedCatalog.js",
     "seed:keys": "node scripts/seedLicenseKeyPool.js",
     "seed:admin": "node scripts/seedAdmin.js",
+    "reset:db": "node scripts/resetDatabase.js",
     "test": "node --test"
   },
   "keywords": [],

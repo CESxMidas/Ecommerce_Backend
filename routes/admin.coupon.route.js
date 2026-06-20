@@ -7,15 +7,18 @@ import {
   updateCoupon,
 } from "../controllers/coupon.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
-import { adminOnly } from "../middleware/admin.middleware.js";
+import {
+  requirePermission,
+  staffOnly,
+} from "../middleware/admin.middleware.js";
 
 const router = Router();
 
-router.use(protect, adminOnly);
+router.use(protect, staffOnly);
 
-router.get("/", getCoupons);
-router.post("/", createCoupon);
-router.put("/:id", updateCoupon);
-router.delete("/:id", deleteCoupon);
+router.get("/", requirePermission("coupons.manage"), getCoupons);
+router.post("/", requirePermission("coupons.manage"), createCoupon);
+router.put("/:id", requirePermission("coupons.manage"), updateCoupon);
+router.delete("/:id", requirePermission("coupons.manage"), deleteCoupon);
 
 export default router;

@@ -13,6 +13,7 @@ import blogRoutes from "./blog.route.js";
 import adminRoutes from "./admin.route.js";
 import adminCouponRoutes from "./admin.coupon.route.js";
 import paymentRoutes from "./payment.route.js";
+import settingsRoutes from "./settings.route.js";
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use("/wishlist", wishlistRoutes);
 router.use("/coupons", couponRoutes);
 router.use("/banners", bannerRoutes);
 router.use("/blogs", blogRoutes);
+router.use("/settings", settingsRoutes);
 router.use("/admin", adminRoutes);
 router.use("/admin/coupons", adminCouponRoutes);
 router.use("/payments", paymentRoutes);

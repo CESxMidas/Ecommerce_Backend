@@ -13,6 +13,7 @@ import {
   setCsrfCookie,
 } from "../utils/csrf.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { isStaffRole } from "../utils/permissions.js";
 import { formatAuthUser } from "../utils/formatters.js";
 import { ApiError, throwIfInvalid } from "../utils/apiError.js";
 import {
@@ -210,7 +211,7 @@ export const login = asyncHandler(async (request, response) => {
   if (
     user.authProvider === "local" &&
     !user.verify_email &&
-    user.role !== "ADMIN"
+    !isStaffRole(user.role)
   ) {
     let emailSent = false;
     let sendErrorMessage = "";

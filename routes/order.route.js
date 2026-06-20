@@ -10,7 +10,7 @@ import {
   updateOrderStatus,
 } from "../controllers/order.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
-import { adminOnly } from "../middleware/admin.middleware.js";
+import { requirePermission } from "../middleware/admin.middleware.js";
 
 const router = Router();
 
@@ -23,6 +23,6 @@ router.get("/:id", getOrderById);
 router.post("/", createOrder);
 router.patch("/:id/cancel", cancelOrder);
 router.patch("/:id/hide", hideOrder);
-router.patch("/:id", protect, adminOnly, updateOrderStatus);
+router.patch("/:id", protect, requirePermission("orders.manage"), updateOrderStatus);
 
 export default router;

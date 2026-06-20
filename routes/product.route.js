@@ -10,7 +10,7 @@ import {
   updateProduct,
 } from "../controllers/product.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
-import { adminOnly } from "../middleware/admin.middleware.js";
+import { requirePermission } from "../middleware/admin.middleware.js";
 
 const router = Router();
 
@@ -19,8 +19,8 @@ router.get("/:id/reviews", getProductReviews);
 router.post("/:id/reviews", protect, createProductReview);
 router.get("/:id", getProductById);
 
-router.post("/", protect, adminOnly, createProduct);
-router.put("/:id", protect, adminOnly, updateProduct);
-router.delete("/:id", protect, adminOnly, deleteProduct);
+router.post("/", protect, requirePermission("products.manage"), createProduct);
+router.put("/:id", protect, requirePermission("products.manage"), updateProduct);
+router.delete("/:id", protect, requirePermission("products.manage"), deleteProduct);
 
 export default router;

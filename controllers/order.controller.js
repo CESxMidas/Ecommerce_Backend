@@ -7,6 +7,7 @@ import PaymentModel from "../models/payment.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatOrder, formatProduct } from "../utils/formatters.js";
 import { ApiError, throwIfInvalid } from "../utils/apiError.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 import { validatePlaceOrder } from "../validators/order.validator.js";
 import {
   assignLicenseKeysToOrder,
@@ -18,6 +19,7 @@ import { resolvePurchaseVariant } from "../utils/productVariants.js";
 import { validateCoupon } from "../utils/couponHelpers.js";
 import { createPayment } from "../services/payment.service.js";
 import { getOrCreateCart } from "../utils/cartHelpers.js";
+import { isStaffRole } from "../utils/permissions.js";
 import {
   ORDER_STATUS,
   PAYMENT_STATUS,
@@ -131,7 +133,7 @@ export const getOrders = asyncHandler(async (req, res) => {
 
   const filter = { email: req.user.email };
 
-  if (req.user.role === "ADMIN" && req.query.all === "true") {
+  if (isStaffRole(req.user.role) && req.query.all === "true") {
     delete filter.email;
   } else {
     filter.hiddenByUsers = { $ne: req.user._id };
@@ -152,7 +154,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
 
   if (!order) throw new ApiError(404, "Order not found");
 
-  if (req.user.role !== "ADMIN" && order.email !== req.user.email) {
+  if (!isStaffRole(req.user.role) && order.email !== req.user.email) {
     throw new ApiError(403, "Not allowed");
   }
 
@@ -346,6 +348,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   const nextStatus = normalizeOrderStatus(req.body.status);
   const session = await mongoose.startSession();
   let order;
+  let previousStatus;
 
   try {
     await session.withTransaction(async () => {
@@ -353,6 +356,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
       if (!order) throw new ApiError(404, "Order not found");
 
+      previousStatus = order.status;
       assertTransitionAllowed(order.status, nextStatus, true);
       order.status = nextStatus;
 
@@ -379,6 +383,17 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     });
   } finally {
     await session.endSession();
+  }
+
+  if (previousStatus && previousStatus !== order.status) {
+    await writeAuditLog({
+      actor: req.user,
+      action: "order.status_change",
+      entityType: "order",
+      entityId: order.orderId,
+      summary: `Đổi trạng thái đơn ${order.orderId}: ${previousStatus} → ${order.status}`,
+      metadata: { from: previousStatus, to: order.status },
+    });
   }
 
   res.json(formatOrder(order));

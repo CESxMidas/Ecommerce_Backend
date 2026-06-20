@@ -42,6 +42,7 @@ export const createCoupon = asyncHandler(async (request, response) => {
     maxDiscount: maxDiscount != null ? Number(maxDiscount) : null,
     usageLimit: usageLimit != null ? Number(usageLimit) : null,
     expiresAt: expiresAt ? new Date(expiresAt) : null,
+    isActive: request.body.isActive !== false,
   });
 
   response.status(201).json(coupon);
@@ -64,11 +65,15 @@ export const updateCoupon = asyncHandler(async (request, response) => {
 });
 
 export const deleteCoupon = asyncHandler(async (request, response) => {
-  const coupon = await CouponModel.findByIdAndDelete(request.params.id);
+  const coupon = await CouponModel.findByIdAndUpdate(
+    request.params.id,
+    { isActive: false },
+    { new: true },
+  );
 
   if (!coupon) {
     throw new ApiError(404, "Coupon not found");
   }
 
-  response.json({ message: "Coupon deleted" });
+  response.json({ message: "Coupon deactivated", coupon });
 });

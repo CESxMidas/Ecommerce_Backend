@@ -321,7 +321,10 @@ export const deleteProduct = asyncHandler(async (request, response) => {
 export const getProductReviews = asyncHandler(async (request, response) => {
   const productId = Number(request.params.id);
 
-  const reviews = await ReviewModel.find({ productId }).sort({
+  const reviews = await ReviewModel.find({
+    productId,
+    isHidden: { $ne: true },
+  }).sort({
     createdAt: -1,
   });
 

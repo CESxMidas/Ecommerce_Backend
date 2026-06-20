@@ -2,6 +2,26 @@ import BannerModel from "../models/banner.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 
+const BANNER_WRITABLE_FIELDS = new Set([
+  "title",
+  "subtitle",
+  "image",
+  "link",
+  "placement",
+  "sortOrder",
+  "isActive",
+]);
+
+function pickBannerPayload(body = {}) {
+  return Object.entries(body).reduce((payload, [key, value]) => {
+    if (BANNER_WRITABLE_FIELDS.has(key) && !key.startsWith("$")) {
+      payload[key] = value;
+    }
+
+    return payload;
+  }, {});
+}
+
 export const getBanners = asyncHandler(async (request, response) => {
   const filter = { isActive: true };
 
@@ -18,27 +38,66 @@ export const getBanners = asyncHandler(async (request, response) => {
 });
 
 export const adminGetBanners = asyncHandler(async (request, response) => {
-  const banners = await BannerModel.find().sort({ sortOrder: 1 });
+  const banners = await BannerModel.find().sort({ sortOrder: 1, createdAt: -1 });
   response.json(banners);
 });
 
 export const createBanner = asyncHandler(async (request, response) => {
-  const { title, image } = request.body;
+  const payload = pickBannerPayload(request.body);
 
-  if (!title?.trim() || !image?.trim()) {
+  if (!payload.title?.trim() || !payload.image?.trim()) {
     throw new ApiError(400, "Title and image are required");
   }
 
-  const banner = await BannerModel.create(request.body);
+  payload.title = payload.title.trim();
+  payload.subtitle = String(payload.subtitle || "").trim();
+  payload.image = payload.image.trim();
+  payload.link = String(payload.link || "").trim();
+  payload.placement = payload.placement || "home_slider";
+  payload.sortOrder = Number(payload.sortOrder ?? 0);
+  payload.isActive = payload.isActive !== false;
+
+  const banner = await BannerModel.create(payload);
   response.status(201).json(banner);
 });
 
 export const updateBanner = asyncHandler(async (request, response) => {
-  const banner = await BannerModel.findByIdAndUpdate(
-    request.params.id,
-    request.body,
-    { new: true },
-  );
+  const payload = pickBannerPayload(request.body);
+
+  if (Object.keys(payload).length === 0) {
+    throw new ApiError(400, "No valid banner fields to update");
+  }
+
+  if (payload.title != null) {
+    payload.title = String(payload.title).trim();
+    if (!payload.title) {
+      throw new ApiError(400, "Title is required");
+    }
+  }
+
+  if (payload.image != null) {
+    payload.image = String(payload.image).trim();
+    if (!payload.image) {
+      throw new ApiError(400, "Image is required");
+    }
+  }
+
+  if (payload.subtitle != null) {
+    payload.subtitle = String(payload.subtitle).trim();
+  }
+
+  if (payload.link != null) {
+    payload.link = String(payload.link).trim();
+  }
+
+  if (payload.sortOrder != null) {
+    payload.sortOrder = Number(payload.sortOrder);
+  }
+
+  const banner = await BannerModel.findByIdAndUpdate(request.params.id, payload, {
+    new: true,
+    runValidators: true,
+  });
 
   if (!banner) {
     throw new ApiError(404, "Banner not found");
@@ -48,11 +107,15 @@ export const updateBanner = asyncHandler(async (request, response) => {
 });
 
 export const deleteBanner = asyncHandler(async (request, response) => {
-  const banner = await BannerModel.findByIdAndDelete(request.params.id);
+  const banner = await BannerModel.findByIdAndUpdate(
+    request.params.id,
+    { isActive: false },
+    { new: true },
+  );
 
   if (!banner) {
     throw new ApiError(404, "Banner not found");
   }
 
-  response.json({ message: "Banner deleted" });
+  response.json({ message: "Banner deactivated", banner });
 });

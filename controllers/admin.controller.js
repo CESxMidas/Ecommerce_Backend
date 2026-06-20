@@ -4,6 +4,7 @@ import OrderModel from "../models/order.model.js";
 import CategoryModel from "../models/category.model.js";
 import CouponModel from "../models/coupon.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { hasPermission } from "../utils/permissions.js";
 
 export const getDashboardStats = asyncHandler(async (request, response) => {
   const [
@@ -21,6 +22,7 @@ export const getDashboardStats = asyncHandler(async (request, response) => {
     CategoryModel.countDocuments({ isActive: true }),
     CouponModel.countDocuments({ isActive: true }),
     OrderModel.aggregate([
+      { $match: { paymentStatus: "paid" } },
       { $group: { _id: null, total: { $sum: "$total" } } },
     ]),
     OrderModel.find()
@@ -35,7 +37,9 @@ export const getDashboardStats = asyncHandler(async (request, response) => {
     orders,
     categories,
     coupons,
-    revenue: revenueAgg[0]?.total || 0,
+    ...(hasPermission(request.user.role, "dashboard.revenue")
+      ? { revenue: revenueAgg[0]?.total || 0 }
+      : {}),
     recentOrders: recentOrders.map((order) => ({
       id: order.orderId,
       total: order.total,

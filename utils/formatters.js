@@ -239,6 +239,27 @@ export function formatAdminUserDetail(user, orderCount = 0) {
   };
 }
 
+export function formatAdminStaff(user) {
+  const doc = user.toObject ? user.toObject() : user;
+
+  return {
+    id: String(doc._id),
+    name: doc.name || "",
+    email: doc.email || "",
+    avatar: doc.avatar || "",
+    role: doc.role || "STAFF",
+    status: doc.status || "Active",
+    verifyEmail: Boolean(doc.verify_email),
+    authProvider: doc.authProvider || "local",
+    createdAt: doc.createdAt
+      ? new Date(doc.createdAt).toISOString()
+      : new Date().toISOString(),
+    lastLoginAt: doc.last_login_date
+      ? new Date(doc.last_login_date).toISOString()
+      : null,
+  };
+}
+
 export function formatOrder(order) {
   const doc = order.toObject ? order.toObject() : order;
   const canRevealLicenseKeys = doc.paymentStatus === "paid";
@@ -312,6 +333,7 @@ export function formatReview(review) {
     rating: doc.rating,
     comment: doc.comment,
     verifiedPurchase: Boolean(doc.verifiedPurchase),
+    isHidden: Boolean(doc.isHidden),
     createdAt: doc.createdAt,
   };
 }

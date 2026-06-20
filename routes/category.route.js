@@ -8,15 +8,15 @@ import {
   updateCategory,
 } from "../controllers/category.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
-import { adminOnly } from "../middleware/admin.middleware.js";
+import { requirePermission } from "../middleware/admin.middleware.js";
 
 const router = Router();
 
 router.get("/", getCategories);
 router.get("/:id", getCategoryById);
 
-router.post("/", protect, adminOnly, createCategory);
-router.put("/:id", protect, adminOnly, updateCategory);
-router.delete("/:id", protect, adminOnly, deleteCategory);
+router.post("/", protect, requirePermission("categories.manage"), createCategory);
+router.put("/:id", protect, requirePermission("categories.manage"), updateCategory);
+router.delete("/:id", protect, requirePermission("categories.manage"), deleteCategory);
 
 export default router;

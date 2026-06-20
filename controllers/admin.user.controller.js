@@ -20,27 +20,27 @@ async function getOrderCountMap(emails) {
   }, {});
 }
 
-async function assertCanChangeAdmin(user, nextRole, nextStatus) {
-  const becomesNonAdmin =
-    (nextRole != null && nextRole !== "ADMIN") ||
+async function assertCanChangeOwner(user, nextRole, nextStatus) {
+  const becomesNonOwner =
+    (nextRole != null && !OWNER_ROLES.includes(nextRole)) ||
     (nextStatus != null && nextStatus !== "Active");
 
-  if (user.role !== "ADMIN" || !becomesNonAdmin) {
+  if (!isOwnerRole(user.role) || !becomesNonOwner) {
     return;
   }
 
-  const activeAdminCount = await UserModel.countDocuments({
-    role: "ADMIN",
+  const activeOwnerCount = await UserModel.countDocuments({
+    role: { $in: OWNER_ROLES },
     status: "Active",
   });
 
-  if (activeAdminCount <= 1 && user.status === "Active") {
-    throw new ApiError(400, "Cannot modify the last active admin account");
+  if (activeOwnerCount <= 1 && user.status === "Active") {
+    throw new ApiError(400, "Cannot modify the last active owner account");
   }
 }
 
 export const adminGetUsers = asyncHandler(async (request, response) => {
-  const users = await UserModel.find({})
+  const users = await UserModel.find({ role: "USER" })
     .sort({ createdAt: -1 })
     .select(
       "-password -forgot_password_otp -email_change_otp_hash -email_change_new",
@@ -58,29 +58,16 @@ export const adminGetUsers = asyncHandler(async (request, response) => {
 export const adminUpdateUser = asyncHandler(async (request, response) => {
   const user = await UserModel.findById(request.params.id);
 
-  if (!user) {
+  if (!user || user.role !== "USER") {
     throw new ApiError(404, "User not found");
   }
 
-  const { role, status } = request.body;
+  const { status } = request.body;
 
   if (String(user._id) === String(request.user._id)) {
-    if (role != null && role !== user.role) {
-      throw new ApiError(400, "Cannot change your own role");
-    }
-
     if (status != null && status !== user.status) {
       throw new ApiError(400, "Cannot change your own account status");
     }
-  }
-
-  if (role != null) {
-    if (!["ADMIN", "USER"].includes(role)) {
-      throw new ApiError(400, "Invalid role");
-    }
-
-    await assertCanChangeAdmin(user, role, status ?? user.status);
-    user.role = role;
   }
 
   if (status != null) {
@@ -88,11 +75,10 @@ export const adminUpdateUser = asyncHandler(async (request, response) => {
       throw new ApiError(400, "Invalid status");
     }
 
-    await assertCanChangeAdmin(user, role ?? user.role, status);
     user.status = status;
   }
 
-  if (role == null && status == null) {
+  if (status == null) {
     throw new ApiError(400, "No valid user fields to update");
   }
 
@@ -107,7 +93,7 @@ export const adminGetUserById = asyncHandler(async (request, response) => {
     "-password -forgot_password_otp -email_change_otp_hash -email_change_new",
   );
 
-  if (!user) {
+  if (!user || user.role !== "USER") {
     throw new ApiError(404, "User not found");
   }
 
