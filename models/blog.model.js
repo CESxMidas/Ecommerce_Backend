@@ -5,7 +5,7 @@ const blogSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
     image: { type: String, default: "" },
-    category: { type: String, default: "General", trim: true },
+    category: { type: String, default: "Chung", trim: true },
     publishedAt: { type: Date, default: Date.now },
     isActive: { type: Boolean, default: true },
   },

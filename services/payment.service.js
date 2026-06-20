@@ -24,6 +24,7 @@ function resolveInitialPaymentStatus(provider) {
 export async function createPayment({
   orderId,
   amount,
+  currency = "VND",
   provider,
   clientIp,
   session = null,
@@ -36,7 +37,7 @@ export async function createPayment({
   let paymentUrl = null;
 
   if (provider === "vnpay") {
-    paymentUrl = createVNPayUrl({ orderId, amount, clientIp });
+    paymentUrl = createVNPayUrl({ orderId, amount, currency, clientIp });
   }
 
   const expiresAt =

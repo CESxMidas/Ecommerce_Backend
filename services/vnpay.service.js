@@ -27,11 +27,28 @@ export function getVnpayExchangeRate() {
     : 25000;
 }
 
-export function toVnpayAmount(amount) {
-  return Math.round(Number(amount || 0) * getVnpayExchangeRate() * 100);
+function toVndAmount(amount, currency = "VND") {
+  const normalizedAmount = Math.max(0, Number(amount) || 0);
+  const normalizedCurrency = String(currency || "VND").trim().toUpperCase();
+
+  if (normalizedCurrency === "USD") {
+    return normalizedAmount * getVnpayExchangeRate();
+  }
+
+  return normalizedAmount;
 }
 
-export function createVNPayUrl({ orderId, amount, clientIp = "127.0.0.1" }) {
+/** VNPay expects vnp_Amount = payment amount in VND × 100 */
+export function toVnpayAmount(amount, currency = "VND") {
+  return Math.round(toVndAmount(amount, currency) * 100);
+}
+
+export function createVNPayUrl({
+  orderId,
+  amount,
+  currency = "VND",
+  clientIp = "127.0.0.1",
+}) {
   const tmnCode = process.env.VNPAY_TMN_CODE;
   const secret = process.env.VNPAY_HASH_SECRET;
   const paymentUrl =
@@ -43,7 +60,7 @@ export function createVNPayUrl({ orderId, amount, clientIp = "127.0.0.1" }) {
   }
 
   const vnpParams = {
-    vnp_Amount: toVnpayAmount(amount),
+    vnp_Amount: toVnpayAmount(amount, currency),
     vnp_Command: "pay",
     vnp_CreateDate: new Date()
       .toISOString()

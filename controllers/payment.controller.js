@@ -35,7 +35,7 @@ export const vnpayReturn = asyncHandler(async (req, res) => {
     return res.redirect(getOrderRedirect(order, "invalid_signature"));
   }
 
-  if (Number(query.vnp_Amount) !== toVnpayAmount(order.total)) {
+  if (Number(query.vnp_Amount) !== toVnpayAmount(order.total, order.currency)) {
     await markPaymentFailed(order, query);
 
     return res.redirect(getOrderRedirect(order, "invalid_amount"));
@@ -80,7 +80,7 @@ export const vnpayIpn = asyncHandler(async (req, res) => {
     });
   }
 
-  if (Number(query.vnp_Amount) !== toVnpayAmount(order.total)) {
+  if (Number(query.vnp_Amount) !== toVnpayAmount(order.total, order.currency)) {
     await markPaymentFailed(order, query);
 
     return res.status(200).json({
@@ -170,6 +170,7 @@ export const reCreatePaymentUrl = asyncHandler(async (req, res) => {
   const paymentUrl = createVNPayUrl({
     orderId: order.orderId,
     amount: order.total,
+    currency: order.currency,
     clientIp: req.ip,
   });
 

@@ -14,7 +14,7 @@ const productSchema = new mongoose.Schema(
     sku: { type: String, trim: true, unique: true, sparse: true, index: true },
     price: { type: Number, required: true, min: 0 },
     discountPrice: { type: Number, min: 0, default: null },
-    currency: { type: String, default: "USD", trim: true, uppercase: true },
+    currency: { type: String, default: "VND", trim: true, uppercase: true },
     images: { type: [String], default: [] },
     thumbnail: { type: String, default: "" },
     categoryId: { type: Number, default: null, index: true },

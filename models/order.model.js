@@ -42,7 +42,7 @@ const orderItemSchema = new mongoose.Schema(
     quantity: Number,
     unitPrice: Number,
     lineTotal: Number,
-    currency: { type: String, default: "USD" },
+    currency: { type: String, default: "VND" },
     variant: { type: Object, default: null },
     product: orderProductSnapshotSchema,
     licenseKeys: { type: [String], default: [] },
@@ -92,7 +92,7 @@ const orderSchema = new mongoose.Schema(
     couponUsageIncremented: { type: Boolean, default: false },
     tax: { type: Number, default: 0 },
     shippingFee: { type: Number, default: 0 },
-    currency: { type: String, default: "USD" },
+    currency: { type: String, default: "VND" },
     stockDeducted: { type: Boolean, default: false },
     stockRestored: { type: Boolean, default: false },
     hiddenByUsers: [

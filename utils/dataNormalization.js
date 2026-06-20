@@ -150,11 +150,11 @@ export function normalizeSeedProduct(raw, categoryMap = new Map()) {
     sku: String(raw.sku || `SKU-${productId}`).trim().toUpperCase(),
     description: String(
       raw.description ||
-        `${name} — genuine digital license with instant email delivery.`,
+        `${name} — bản quyền số chính hãng, giao nhanh qua email và đơn hàng.`,
     ).trim(),
     price,
     discountPrice,
-    currency: String(raw.currency || "USD").trim().toUpperCase(),
+    currency: String(raw.currency || "VND").trim().toUpperCase(),
     images: finalImages,
     thumbnail: finalThumbnail,
     categoryId: Number.isNaN(categoryId) ? null : categoryId,
@@ -217,7 +217,7 @@ function normalizeDeliveryType(value, productType) {
 }
 
 function categoryNameFallback(raw) {
-  return raw.categoryName || "Digital";
+  return raw.categoryName || "Sản phẩm số";
 }
 
 function clamp(value, min, max) {

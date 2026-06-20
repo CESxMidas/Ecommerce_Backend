@@ -100,7 +100,7 @@ async function validateAndFulfillOrderItems(items = [], session = null) {
       quantity,
       unitPrice,
       lineTotal,
-      currency: dbProduct.currency || "USD",
+      currency: dbProduct.currency || "VND",
       variant,
       product: formatProduct(dbProduct),
       licenseKeys: [],
@@ -198,7 +198,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     couponCode,
     tax = 0,
     shippingFee = 0,
-    currency = "USD",
+    currency = "VND",
   } = req.body;
   const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
   const session = await mongoose.startSession();
@@ -231,9 +231,11 @@ export const createOrder = asyncHandler(async (req, res) => {
 
       const totals = computeOrderTotal(discountedSubtotal, { tax, shippingFee });
       const orderId = generateOrderId();
+      const orderCurrency = String(currency || "VND").trim().toUpperCase();
       const paymentSession = await createPayment({
         orderId,
         amount: totals.total,
+        currency: orderCurrency,
         provider: normalizedPaymentMethod,
         clientIp: req.ip,
         session,
@@ -269,7 +271,7 @@ export const createOrder = asyncHandler(async (req, res) => {
             couponCode: appliedCouponCode,
             tax: totals.tax,
             shippingFee: totals.shippingFee,
-            currency: String(currency || "USD").trim().toUpperCase(),
+            currency: String(currency || "VND").trim().toUpperCase(),
             total: totals.total,
             email: (req.user?.email || email).trim().toLowerCase(),
             userId: userId || req.user?.email,

@@ -4,6 +4,13 @@ import {
   resolvePricing,
   sanitizeImageUrls,
 } from "./dataNormalization.js";
+import {
+  getBadgeLabel,
+  getDeliveryTypeLabel,
+  getOrderStatusLabel,
+  getPaymentStatusLabel,
+  getProductTypeLabel,
+} from "./displayLabels.js";
 import { getPurchaseVariants } from "./productVariants.js";
 
 export function computeDiscount(oldPrice, price) {
@@ -67,7 +74,7 @@ export function formatProduct(product) {
   const categoryId =
     doc.categoryId != null ? String(doc.categoryId) : "";
   const vendor = doc.vendor || doc.brand || "";
-  const badge = doc.badge || doc.tag || "";
+  const badge = getBadgeLabel(doc.badge || doc.tag || "");
   const createdAt = doc.createdAt
     ? new Date(doc.createdAt).toISOString()
     : new Date().toISOString();
@@ -93,7 +100,7 @@ export function formatProduct(product) {
     description: doc.description || "",
     price,
     discountPrice: discountPrice ?? undefined,
-    currency: doc.currency || "USD",
+    currency: doc.currency || "VND",
     images,
     thumbnail: thumbnail || images[0] || "",
     categoryId,
@@ -122,6 +129,8 @@ export function formatProduct(product) {
     dimensions: doc.dimensions || { length: 0, width: 0, height: 0 },
     seoTitle: doc.seoTitle || name,
     seoDescription: doc.seoDescription || doc.description || "",
+    productTypeLabel: getProductTypeLabel(productType),
+    deliveryTypeLabel: getDeliveryTypeLabel(deliveryType),
   };
 
   return {
@@ -208,23 +217,25 @@ export function formatOrder(order) {
     discount: doc.discount ?? 0,
     tax: doc.tax ?? 0,
     shippingFee: doc.shippingFee ?? 0,
-    currency: doc.currency || "USD",
+    currency: doc.currency || "VND",
     email: doc.email,
     userId: doc.userId,
     status: doc.status,
+    statusLabel: getOrderStatusLabel(doc.status),
     items: (doc.items || []).map((item) => ({
       productId: item.productId,
       sku: item.sku || item.product?.sku || "",
       quantity: item.quantity,
       unitPrice: item.unitPrice ?? item.product?.salePrice ?? item.product?.price ?? 0,
       lineTotal: item.lineTotal ?? 0,
-      currency: item.currency || doc.currency || "USD",
+      currency: item.currency || doc.currency || "VND",
       variant: item.variant || null,
       licenseKeys: canRevealLicenseKeys ? item.licenseKeys || [] : [],
       product: item.product ? formatProduct(item.product) : item.product,
     })),
     paymentMethod: doc.paymentMethod,
     paymentStatus: doc.paymentStatus,
+    paymentStatusLabel: getPaymentStatusLabel(doc.paymentStatus),
     paymentUrl: doc.paymentUrl || "",
     couponCode: doc.couponCode || "",
     stockDeducted: Boolean(doc.stockDeducted),
