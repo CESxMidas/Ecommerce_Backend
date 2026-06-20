@@ -9,6 +9,7 @@ import { getCategoryIdsWithDescendants } from "../utils/categoryHelpers.js";
 import { syncProductReviewStats } from "../utils/reviewHelpers.js";
 import { validateProductPayload } from "../validators/schema.validator.js";
 import { getNextSequence } from "../utils/sequence.js";
+import { enrichFormattedProductsWithPoolStock, enrichFormattedProductWithPoolStock } from "../utils/licenseKeyPool.js";
 
 const PRODUCT_SEQUENCE = "productId";
 const PRODUCT_WRITABLE_FIELDS = new Set([
@@ -220,7 +221,7 @@ export const getProducts = asyncHandler(async (request, response) => {
     ]);
 
     return response.json({
-      items: paged.map(formatProduct),
+      items: await enrichFormattedProductsWithPoolStock(paged.map(formatProduct)),
       total,
       page,
       limit,
@@ -230,18 +231,17 @@ export const getProducts = asyncHandler(async (request, response) => {
 
   const products = await ProductModel.aggregate(pipeline);
 
-  response.json(products.map(formatProduct));
+  response.json(await enrichFormattedProductsWithPoolStock(products.map(formatProduct)));
 });
 
 export const getProductById = asyncHandler(async (request, response) => {
   const param = request.params.id;
-  const product = Number.isNaN(Number(param))
-    ? await ProductModel.findOne({
-        slug: String(param).toLowerCase(),
-        isActive: true,
-      })
+  const isNumeric = !Number.isNaN(Number(param));
+
+  const product = isNumeric
+    ? await ProductModel.findOne({ productId: Number(param) })
     : await ProductModel.findOne({
-        productId: Number(param),
+        slug: String(param).toLowerCase(),
         isActive: true,
       });
 
@@ -249,7 +249,14 @@ export const getProductById = asyncHandler(async (request, response) => {
     throw new ApiError(404, "Product not found");
   }
 
-  response.json(formatProduct(product));
+  response.json(await enrichFormattedProductWithPoolStock(formatProduct(product)));
+});
+
+export const adminGetProducts = asyncHandler(async (request, response) => {
+  const products = await ProductModel.find({}).sort({ productId: -1 });
+  response.json(
+    await enrichFormattedProductsWithPoolStock(products.map(formatProduct)),
+  );
 });
 
 export const createProduct = asyncHandler(async (request, response) => {

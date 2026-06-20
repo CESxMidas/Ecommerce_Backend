@@ -3,6 +3,7 @@ import PaymentModel from "../models/payment.model.js";
 import OrderModel from "../models/order.model.js";
 import { ApiError } from "./apiError.js";
 import { claimCouponUsageByCode } from "./couponHelpers.js";
+import { releaseKeysForOrder } from "./licenseKey.js";
 
 export const ORDER_STATUS = Object.freeze({
   PENDING_PAYMENT: "PendingPayment",
@@ -156,6 +157,7 @@ export async function restoreOrderStockOnce(order, session = null) {
     return order;
   }
 
+  await releaseKeysForOrder(order, session);
   await restoreStockForItems(order.items || [], session);
 
   order.stockRestored = true;

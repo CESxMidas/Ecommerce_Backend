@@ -207,7 +207,11 @@ export const login = asyncHandler(async (request, response) => {
     throw new ApiError(401, "Invalid email or password");
   }
 
-  if (user.authProvider === "local" && !user.verify_email) {
+  if (
+    user.authProvider === "local" &&
+    !user.verify_email &&
+    user.role !== "ADMIN"
+  ) {
     let emailSent = false;
     let sendErrorMessage = "";
 
