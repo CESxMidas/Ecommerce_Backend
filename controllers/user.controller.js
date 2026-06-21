@@ -158,8 +158,8 @@ export const verifyEmailChange = asyncHandler(async (request, response) => {
   await user.save();
 
   await createNotification(user._id, {
-    title: "Email updated",
-    message: "Your account email was changed successfully.",
+    title: "Email đã được cập nhật",
+    message: "Email tài khoản của bạn đã được đổi thành công.",
   });
 
   response.json(formatProfile(user));
@@ -196,8 +196,8 @@ export const changePassword = asyncHandler(async (request, response) => {
 
   await createNotification(user._id, {
     type: "security",
-    title: "Password changed",
-    message: "Your account password was changed.",
+    title: "Mật khẩu đã được đổi",
+    message: "Mật khẩu tài khoản của bạn vừa được thay đổi.",
   });
 
   response.json({ message: "Password changed successfully" });
@@ -509,8 +509,8 @@ export const createTicket = asyncHandler(async (request, response) => {
 
   await createNotification(request.user._id, {
     type: "support",
-    title: "Support ticket created",
-    message: `Ticket "${ticket.subject}" was created.`,
+    title: "Đã tạo yêu cầu hỗ trợ",
+    message: `Yêu cầu "${ticket.subject}" đã được gửi. Chúng tôi sẽ phản hồi sớm.`,
     data: { ticketId: ticket._id },
   });
 

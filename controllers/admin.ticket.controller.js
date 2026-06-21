@@ -178,7 +178,7 @@ export const adminReplyTicket = asyncHandler(async (request, response) => {
   await notifyTicketUser(userId, {
     type: "support",
     title: "Phản hồi hỗ trợ mới",
-    message: `Shop đã trả lời ticket "${ticket.subject}".`,
+    message: `Shop đã phản hồi yêu cầu "${ticket.subject}". Xem chi tiết tại mục Hỗ trợ.`,
     data: { ticketId: ticket._id },
   });
 

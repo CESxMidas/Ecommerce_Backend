@@ -59,6 +59,7 @@ async function sendAuthResponse(user, request, response, statusCode = 200) {
 
   const payload = {
     ...formatAuthUser(user, token),
+    refreshToken,
   };
 
   response.cookie("refreshToken", refreshToken, {
@@ -285,6 +286,7 @@ export const refreshTokens = asyncHandler(async (request, response) => {
 
   response.json({
     ...formatAuthUser(user, rotated.accessToken),
+    refreshToken: rotated.refreshToken,
   });
 });
 

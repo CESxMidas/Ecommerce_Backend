@@ -15,7 +15,11 @@ export function errorHandler(error, request, response, next) {
   }
 
   if (process.env.NODE_ENV !== "production") {
-    console.error(error);
+    if (error.statusCode && error.statusCode < 500) {
+      console.warn(`[${statusCode}] ${message}`);
+    } else {
+      console.error(error);
+    }
   }
 
   response.status(statusCode).json({
