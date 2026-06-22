@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "build": "node --check server.js",
     "seed:catalog": "node scripts/seedCatalog.js",
     "seed:production": "node scripts/seedCatalog.js",
     "seed:keys": "node scripts/seedLicenseKeyPool.js",
