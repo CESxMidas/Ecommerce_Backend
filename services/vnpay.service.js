@@ -89,6 +89,65 @@ export function createVNPayUrl({
   return `${paymentUrl}?${query.toString()}`;
 }
 
+function signVnpayParams(params) {
+  const secret = process.env.VNPAY_HASH_SECRET;
+
+  if (!secret) {
+    throw new Error("VNPay credentials are not configured");
+  }
+
+  const sorted = sortObject(params);
+  const secureHash = crypto
+    .createHmac("sha512", secret)
+    .update(buildSignData(sorted), "utf-8")
+    .digest("hex");
+
+  return { ...sorted, vnp_SecureHash: secureHash };
+}
+
+/** Build signed query params mimicking a VNPay IPN/return callback (dev testing only). */
+export function createVnpayCallbackQuery({
+  orderId,
+  amount,
+  currency = "VND",
+  responseCode = "00",
+  transactionNo,
+}) {
+  const tmnCode = process.env.VNPAY_TMN_CODE;
+
+  if (!tmnCode) {
+    throw new Error("VNPay credentials are not configured");
+  }
+
+  const params = {
+    vnp_Amount: String(toVnpayAmount(amount, currency)),
+    vnp_BankCode: "NCB",
+    vnp_BankTranNo: `MOCK${Date.now()}`,
+    vnp_CardType: "ATM",
+    vnp_OrderInfo: `Thanh toan don hang ${orderId}`,
+    vnp_PayDate: new Date()
+      .toISOString()
+      .replace(/[-:TZ.]/g, "")
+      .slice(0, 14),
+    vnp_ResponseCode: responseCode,
+    vnp_TmnCode: tmnCode,
+    vnp_TransactionNo:
+      transactionNo ||
+      String(Math.floor(10_000_000 + Math.random() * 90_000_000)),
+    vnp_TransactionStatus: responseCode === "00" ? "00" : "02",
+    vnp_TxnRef: orderId,
+  };
+
+  return signVnpayParams(params);
+}
+
+export function buildVnpayCallbackUrl(baseUrl, path, query) {
+  const normalizedBase = String(baseUrl || "").replace(/\/$/, "");
+  const search = new URLSearchParams(query);
+
+  return `${normalizedBase}${path}?${search.toString()}`;
+}
+
 export function verifyVNPay(query) {
   const secret = process.env.VNPAY_HASH_SECRET;
 

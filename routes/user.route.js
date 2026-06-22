@@ -9,6 +9,7 @@ import {
   deleteSession,
   getLicenses,
   getNotifications,
+  getPremiumAccounts,
   getAddresses,
   getProfile,
   getSessions,
@@ -18,6 +19,7 @@ import {
   markNotificationRead,
   requestEmailChange,
   resendLicenseKeys,
+  resendPremiumAccounts,
   setDefaultAddress,
   addTicketReply,
   updateAddress,
@@ -48,6 +50,9 @@ router.delete("/sessions/:id", deleteSession);
 
 router.get("/licenses", getLicenses);
 router.post("/licenses/:orderId/resend", resendLicenseKeys);
+
+router.get("/accounts", getPremiumAccounts);
+router.post("/accounts/:orderId/resend", resendPremiumAccounts);
 
 router.get("/notifications", getNotifications);
 router.patch("/notifications/read-all", markAllNotificationsRead);

@@ -38,18 +38,16 @@ export const adminGetNotifications = asyncHandler(async (request, response) => {
   }
 
   if (hasPermission(role, "tickets.manage")) {
-    const openTickets = await TicketModel.countDocuments({
-      status: { $in: ["open", "pending"] },
-    });
+    const needsReply = await TicketModel.countDocuments({ status: "open" });
 
-    if (openTickets > 0) {
+    if (needsReply > 0) {
       alerts.push({
-        id: "tickets-open",
+        id: "tickets-needs-reply",
         type: "ticket",
         title: "Ticket hỗ trợ",
-        message: `${openTickets} ticket đang mở hoặc chờ phản hồi`,
-        href: "/tickets?status=open",
-        count: openTickets,
+        message: `${needsReply} ticket chờ phản hồi từ shop`,
+        href: "/tickets?queue=waiting_customer",
+        count: needsReply,
       });
     }
   }

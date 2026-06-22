@@ -233,6 +233,50 @@ export async function sendLicenseKeysEmail({ to, name, orderId, keys }) {
   });
 }
 
+export async function sendAccountCredentialsEmail({ to, name, orderId, accounts }) {
+  const accountText = accounts
+    .map((entry) => {
+      const lines = entry.credentials.map(
+        (credential) =>
+          `  - ${credential.username} / ${credential.password}${
+            credential.note ? ` (${credential.note})` : ""
+          }`,
+      );
+      return `${entry.productName}:\n${lines.join("\n")}`;
+    })
+    .join("\n\n");
+
+  const accountHtml = accounts
+    .map((entry) => {
+      const rows = entry.credentials
+        .map(
+          (credential) =>
+            `<li><code>${credential.username}</code> / <code>${credential.password}</code>${
+              credential.note
+                ? ` <span style="color:#64748b;">(${credential.note})</span>`
+                : ""
+            }</li>`,
+        )
+        .join("");
+      return `<li><strong>${entry.productName}</strong><ul>${rows}</ul></li>`;
+    })
+    .join("");
+
+  return sendMail({
+    to,
+    subject: `[E-commerce] Tài khoản Premium cho đơn #${orderId}`,
+    text: `Xin chào ${name},\n\nThông tin tài khoản đơn #${orderId}:\n\n${accountText}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+        <h2 style="color: #1e293b;">Tài khoản Premium — đơn #${orderId}</h2>
+        <p style="color: #475569;">Xin chào <strong>${name}</strong>, đây là thông tin tài khoản đã mua:</p>
+        <ul style="color: #0f172a; line-height: 1.8;">${accountHtml}</ul>
+        <p style="color: #64748b; font-size: 13px;">Vui lòng đổi mật khẩu sau khi đăng nhập nếu dịch vụ cho phép.</p>
+      </div>
+    `,
+  });
+}
+
 export function assertEmailSent(mailResult) {
   if (!isEmailConfigured()) {
     throw new Error(

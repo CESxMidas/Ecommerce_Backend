@@ -5,6 +5,7 @@ import {
   ORDER_STATUS,
   assertTransitionAllowed,
   getInitialOrderStatus,
+  resolveOrderStatusAfterPayment,
   shouldDeductStockImmediately,
 } from "../utils/orderLifecycle.js";
 
@@ -55,5 +56,37 @@ test("admin transitions must follow the status machine", () => {
       ORDER_STATUS.PROCESSING,
       true,
     ),
+  );
+});
+
+test("digital-only orders complete immediately after payment", () => {
+  const digitalOrder = {
+    items: [
+      {
+        product: {
+          productType: "license_key",
+          deliveryType: "instant_key",
+        },
+      },
+    ],
+  };
+  const physicalOrder = {
+    items: [
+      {
+        product: {
+          productType: "hardware",
+          deliveryType: "physical",
+        },
+      },
+    ],
+  };
+
+  assert.equal(
+    resolveOrderStatusAfterPayment(digitalOrder),
+    ORDER_STATUS.DELIVERED,
+  );
+  assert.equal(
+    resolveOrderStatusAfterPayment(physicalOrder),
+    ORDER_STATUS.PROCESSING,
   );
 });

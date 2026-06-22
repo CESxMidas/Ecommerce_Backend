@@ -14,11 +14,15 @@ import adminRoutes from "./admin.route.js";
 import adminCouponRoutes from "./admin.coupon.route.js";
 import paymentRoutes from "./payment.route.js";
 import settingsRoutes from "./settings.route.js";
+import { isCloudinaryConfigured } from "../utils/cloudinaryUpload.js";
 
 const router = Router();
 
 router.get("/health", (request, response) => {
-  response.json({ ok: true });
+  response.json({
+    ok: true,
+    cloudinary: isCloudinaryConfigured(),
+  });
 });
 
 router.use("/auth", authRoutes);

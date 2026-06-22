@@ -4,13 +4,14 @@ import PaymentModel from "../models/payment.model.js";
 import OrderModel from "../models/order.model.js";
 import CartModel from "../models/cart.model.js";
 import { createVNPayUrl } from "./vnpay.service.js";
-import { assignLicenseKeysToOrder } from "../utils/licenseKey.js";
+import { assignDigitalDeliverablesToOrder } from "../utils/digitalDelivery.js";
 import {
   ORDER_STATUS,
   PAYMENT_STATUS,
   decrementOrderStockOnce,
   markOrderCouponUsedOnce,
   markPaymentFailed,
+  resolveOrderStatusAfterPayment,
 } from "../utils/orderLifecycle.js";
 
 function resolveInitialPaymentStatus(provider) {
@@ -118,12 +119,12 @@ export async function markPaymentPaid({ orderId, transactionId, raw }) {
 
       await decrementOrderStockOnce(order, session);
 
-      order.status = ORDER_STATUS.PROCESSING;
+      order.status = resolveOrderStatusAfterPayment(order);
       order.paymentStatus = PAYMENT_STATUS.PAID;
       order.expiresAt = undefined;
       await order.save({ session });
       await markOrderCouponUsedOnce(order, session);
-      await assignLicenseKeysToOrder(order, session);
+      await assignDigitalDeliverablesToOrder(order, session);
 
       if (order.user) {
         await CartModel.updateOne(

@@ -10,10 +10,9 @@ import { ApiError, throwIfInvalid } from "../utils/apiError.js";
 import { writeAuditLog } from "../utils/auditLog.js";
 import { validatePlaceOrder } from "../validators/order.validator.js";
 import {
-  assignLicenseKeysToOrder,
-  releaseKeysForOrder,
-  reserveKeysForOrder,
-} from "../utils/licenseKey.js";
+  assignDigitalDeliverablesToOrder,
+  reserveDigitalDeliverablesForOrder,
+} from "../utils/digitalDelivery.js";
 import { getSalePriceFromDoc } from "../utils/dataNormalization.js";
 import { resolvePurchaseVariant } from "../utils/productVariants.js";
 import { validateCoupon } from "../utils/couponHelpers.js";
@@ -27,6 +26,7 @@ import {
   decrementStockForItems,
   expireStalePendingOrders,
   getInitialOrderStatus,
+  isPhysicalDeliveryItem,
   markOrderCouponUsedOnce,
   normalizeOrderStatus,
   restoreOrderStockOnce,
@@ -34,6 +34,10 @@ import {
   shouldDeductStockImmediately,
 } from "../utils/orderLifecycle.js";
 import { countAvailableKeys, isPoolProduct } from "../utils/licenseKeyPool.js";
+import {
+  countAvailableAccounts,
+  isAccountPoolProduct,
+} from "../utils/accountCredentialPool.js";
 
 function generateOrderId() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -64,13 +68,6 @@ function normalizePaymentMethod(method) {
   }
 
   return normalized;
-}
-
-function isPhysicalDeliveryItem(item) {
-  return (
-    item?.product?.deliveryType === "physical" ||
-    item?.product?.productType === "hardware"
-  );
 }
 
 async function validateAndFulfillOrderItems(items = [], session = null) {
@@ -107,6 +104,17 @@ async function validateAndFulfillOrderItems(items = [], session = null) {
       }
     }
 
+    if (isAccountPoolProduct(dbProduct)) {
+      const availableAccounts = await countAvailableAccounts(productId, session);
+
+      if (availableAccounts < quantity) {
+        throw new ApiError(
+          400,
+          `Sản phẩm "${dbProduct.name}" đã hết tài khoản trong kho`,
+        );
+      }
+    }
+
     const variant = resolvePurchaseVariant(dbProduct, item.variant);
     const unitPrice = variant?.price ?? getSalePriceFromDoc(dbProduct);
     const lineTotal = unitPrice * quantity;
@@ -122,6 +130,7 @@ async function validateAndFulfillOrderItems(items = [], session = null) {
       variant,
       product: formatProduct(dbProduct),
       licenseKeys: [],
+      accountCredentials: [],
     });
   }
 
@@ -270,7 +279,7 @@ export const createOrder = asyncHandler(async (req, res) => {
 
       if (stockDeducted) {
         await decrementStockForItems(fulfilledItems, session);
-        await reserveKeysForOrder(
+        await reserveDigitalDeliverablesForOrder(
           { orderId, items: fulfilledItems },
           session,
         );
@@ -314,7 +323,7 @@ export const createOrder = asyncHandler(async (req, res) => {
       order = createdOrder;
 
       if (paymentSession.paymentStatus === PAYMENT_STATUS.PAID) {
-        order = await assignLicenseKeysToOrder(order, session);
+        order = await assignDigitalDeliverablesToOrder(order, session);
       }
 
       if (
@@ -416,7 +425,8 @@ export const cancelOrder = asyncHandler(async (req, res) => {
 
       if (
         order.paymentStatus === PAYMENT_STATUS.PAID &&
-        (order.items || []).some((item) => item.licenseKeys?.length)
+        (order.items || []).some((item) => item.licenseKeys?.length) ||
+        (order.items || []).some((item) => item.accountCredentials?.length)
       ) {
         throw new ApiError(
           400,

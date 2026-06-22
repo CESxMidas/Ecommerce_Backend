@@ -98,9 +98,26 @@ function parsePositiveInt(value, fallback, max = 100) {
 
 export const getProducts = asyncHandler(async (request, response) => {
   const filter = { isActive: true };
-  const { category, categoryId } = request.query;
+  const { category, categoryId, categoryIds } = request.query;
 
-  if (categoryId) {
+  if (categoryIds) {
+    const rawIds = String(categoryIds)
+      .split(",")
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isInteger(value) && value > 0);
+    const expanded = new Set();
+
+    for (const id of rawIds) {
+      const descendants = await getCategoryIdsWithDescendants(id);
+      descendants.forEach((value) => expanded.add(value));
+    }
+
+    if (expanded.size > 0) {
+      filter.categoryId = { $in: [...expanded] };
+    } else {
+      filter.categoryId = -1;
+    }
+  } else if (categoryId) {
     const ids = await getCategoryIdsWithDescendants(Number(categoryId));
 
     if (!Number.isNaN(ids[0])) {

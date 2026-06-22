@@ -290,6 +290,7 @@ export function formatOrder(order) {
       currency: item.currency || doc.currency || "VND",
       variant: item.variant || null,
       licenseKeys: canRevealLicenseKeys ? item.licenseKeys || [] : [],
+      accountCredentials: canRevealLicenseKeys ? item.accountCredentials || [] : [],
       product: item.product ? formatProduct(item.product) : item.product,
     })),
     paymentMethod: doc.paymentMethod,

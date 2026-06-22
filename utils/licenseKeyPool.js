@@ -1,6 +1,7 @@
 import LicenseKeyModel from "../models/licenseKey.model.js";
 import ProductModel from "../models/product.model.js";
 import { ApiError } from "./apiError.js";
+import { getAvailableAccountCountsMap, isAccountPoolProduct } from "./accountCredentialPool.js";
 
 export function isPoolProduct(product) {
   if (!product) {
@@ -288,7 +289,7 @@ export async function getAvailableKeyCountsMap(productIds = []) {
 
 export function applyPoolStockToFormattedProducts(products, countsMap) {
   return products.map((product) => {
-    if (!isPoolProduct(product)) {
+    if (!isPoolProduct(product) && !isAccountPoolProduct(product)) {
       return product;
     }
 
@@ -298,7 +299,8 @@ export function applyPoolStockToFormattedProducts(products, countsMap) {
     return {
       ...product,
       stock: available,
-      usesKeyPool: true,
+      usesKeyPool: isPoolProduct(product),
+      usesAccountPool: isAccountPoolProduct(product),
     };
   });
 }
@@ -306,14 +308,29 @@ export function applyPoolStockToFormattedProducts(products, countsMap) {
 export async function enrichFormattedProductsWithPoolStock(products) {
   const formatted = products.filter(Boolean);
   const poolProductIds = formatted
-    .filter((product) => isPoolProduct(product))
+    .filter((product) => isPoolProduct(product) || isAccountPoolProduct(product))
     .map((product) => Number(product.id ?? product.productId));
 
   if (poolProductIds.length === 0) {
     return formatted;
   }
 
-  const countsMap = await getAvailableKeyCountsMap(poolProductIds);
+  const [keyCounts, accountCounts] = await Promise.all([
+    getAvailableKeyCountsMap(poolProductIds),
+    getAvailableAccountCountsMap(poolProductIds),
+  ]);
+
+  const countsMap = new Map(
+    poolProductIds.map((id) => {
+      const product = formatted.find(
+        (entry) => Number(entry.id ?? entry.productId) === id,
+      );
+      if (isAccountPoolProduct(product)) {
+        return [id, accountCounts.get(id) ?? 0];
+      }
+      return [id, keyCounts.get(id) ?? 0];
+    }),
+  );
 
   return applyPoolStockToFormattedProducts(formatted, countsMap);
 }

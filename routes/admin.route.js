@@ -20,6 +20,12 @@ import {
   revokeProductKey,
 } from "../controllers/admin.licenseKey.controller.js";
 import {
+  getProductAccountStats,
+  importProductAccounts,
+  listProductAccounts,
+  revokeProductAccount,
+} from "../controllers/admin.accountCredential.controller.js";
+import {
   adminCreateStaff,
   adminGetStaff,
   adminResetStaffPassword,
@@ -147,6 +153,27 @@ router.delete(
   "/products/:productId/keys/:keyId",
   requirePermission("keys.manage"),
   revokeProductKey,
+);
+
+router.get(
+  "/products/:productId/accounts/stats",
+  requirePermission("keys.manage"),
+  getProductAccountStats,
+);
+router.get(
+  "/products/:productId/accounts",
+  requirePermission("keys.manage"),
+  listProductAccounts,
+);
+router.post(
+  "/products/:productId/accounts/import",
+  requirePermission("keys.manage"),
+  importProductAccounts,
+);
+router.delete(
+  "/products/:productId/accounts/:accountId",
+  requirePermission("keys.manage"),
+  revokeProductAccount,
 );
 
 export default router;

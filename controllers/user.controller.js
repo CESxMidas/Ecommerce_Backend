@@ -21,6 +21,7 @@ import {
 import {
   assertEmailSent,
   isEmailConfigured,
+  sendAccountCredentialsEmail,
   sendEmailChangeVerificationEmail,
   sendLicenseKeysEmail,
 } from "../utils/email.js";
@@ -421,6 +422,70 @@ export const resendLicenseKeys = asyncHandler(async (request, response) => {
   assertEmailSent(mailResult);
 
   response.json({ message: "License keys resent" });
+});
+
+function collectPremiumAccountEntries(orders) {
+  const entries = [];
+
+  orders.forEach((order) => {
+    const formatted = formatOrder(order);
+
+    formatted.items
+      .filter((item) => item.accountCredentials?.length)
+      .forEach((item) => {
+        entries.push({
+          id: `${formatted.id}-${item.productId}`,
+          orderId: formatted.id,
+          productId: item.productId,
+          productName:
+            item.product?.name || item.product?.title || `Product ${item.productId}`,
+          thumbnail: item.product?.thumbnail || item.product?.image || "",
+          credentials: item.accountCredentials,
+          createdAt: formatted.createdAt,
+        });
+      });
+  });
+
+  return entries;
+}
+
+export const getPremiumAccounts = asyncHandler(async (request, response) => {
+  const orders = await OrderModel.find({
+    email: request.user.email,
+    paymentStatus: "paid",
+    "items.accountCredentials.0": { $exists: true },
+  }).sort({ createdAt: -1 });
+
+  response.json(collectPremiumAccountEntries(orders));
+});
+
+export const resendPremiumAccounts = asyncHandler(async (request, response) => {
+  const order = await OrderModel.findOne({
+    orderId: request.params.orderId,
+    email: request.user.email,
+    paymentStatus: "paid",
+    "items.accountCredentials.0": { $exists: true },
+  });
+
+  if (!order) {
+    throw new ApiError(404, "Premium account order not found");
+  }
+
+  const accounts = collectPremiumAccountEntries([order]).map((entry) => ({
+    productName: entry.productName,
+    credentials: entry.credentials,
+  }));
+
+  const mailResult = await sendAccountCredentialsEmail({
+    to: request.user.email,
+    name: request.user.name,
+    orderId: order.orderId,
+    accounts,
+  });
+
+  assertEmailSent(mailResult);
+
+  response.json({ message: "Premium accounts resent" });
 });
 
 export const getNotifications = asyncHandler(async (request, response) => {

@@ -46,6 +46,16 @@ const orderItemSchema = new mongoose.Schema(
     variant: { type: Object, default: null },
     product: orderProductSnapshotSchema,
     licenseKeys: { type: [String], default: [] },
+    accountCredentials: {
+      type: [
+        {
+          username: { type: String, default: "" },
+          password: { type: String, default: "" },
+          note: { type: String, default: "" },
+        },
+      ],
+      default: [],
+    },
   },
   { _id: false },
 );

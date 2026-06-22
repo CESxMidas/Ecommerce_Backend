@@ -3,7 +3,7 @@ import PaymentModel from "../models/payment.model.js";
 import OrderModel from "../models/order.model.js";
 import { ApiError } from "./apiError.js";
 import { claimCouponUsageByCode } from "./couponHelpers.js";
-import { releaseKeysForOrder } from "./licenseKey.js";
+import { releaseDigitalDeliverablesForOrder } from "./digitalDelivery.js";
 
 export const ORDER_STATUS = Object.freeze({
   PENDING_PAYMENT: "PendingPayment",
@@ -78,6 +78,31 @@ export function shouldDeductStockImmediately(paymentMethod, paymentStatus) {
 
 export function shouldClaimCouponImmediately(paymentMethod, paymentStatus) {
   return paymentMethod === "cod" || paymentStatus === PAYMENT_STATUS.PAID;
+}
+
+export function isPhysicalDeliveryItem(item) {
+  return (
+    item?.product?.deliveryType === "physical" ||
+    item?.product?.productType === "hardware"
+  );
+}
+
+export function isDigitalOnlyOrder(order) {
+  const items = order?.items || [];
+
+  if (items.length === 0) {
+    return false;
+  }
+
+  return items.every((item) => !isPhysicalDeliveryItem(item));
+}
+
+export function resolveOrderStatusAfterPayment(order) {
+  if (isDigitalOnlyOrder(order)) {
+    return ORDER_STATUS.DELIVERED;
+  }
+
+  return ORDER_STATUS.PROCESSING;
 }
 
 export function assertTransitionAllowed(currentStatus, nextStatus, isAdmin = false) {
@@ -157,7 +182,7 @@ export async function restoreOrderStockOnce(order, session = null) {
     return order;
   }
 
-  await releaseKeysForOrder(order, session);
+  await releaseDigitalDeliverablesForOrder(order, session);
   await restoreStockForItems(order.items || [], session);
 
   order.stockRestored = true;
