@@ -198,6 +198,8 @@ export function formatProfile(user) {
     verify_email: Boolean(user.verify_email),
     twoFactorEnabled: Boolean(user.twoFactorEnabled),
     pendingEmail: user.email_change_new || "",
+    authProvider: user.authProvider || "local",
+    hasPassword: Boolean(user.password),
   };
 }
 

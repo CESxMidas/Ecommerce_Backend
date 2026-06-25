@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { validateCoupon } from "../utils/couponHelpers.js";
 import { ApiError, throwIfInvalid } from "../utils/apiError.js";
 import { validateCouponPayload } from "../validators/schema.validator.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 export const validateCouponCode = asyncHandler(async (request, response) => {
   const { code, subtotal } = request.body;
@@ -45,6 +46,15 @@ export const createCoupon = asyncHandler(async (request, response) => {
     isActive: request.body.isActive !== false,
   });
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "coupon.create",
+    entityType: "coupon",
+    entityId: coupon._id,
+    summary: `Tạo mã giảm giá: ${coupon.code}`,
+    metadata: { type: coupon.type, value: coupon.value },
+  });
+
   response.status(201).json(coupon);
 });
 
@@ -61,6 +71,15 @@ export const updateCoupon = asyncHandler(async (request, response) => {
     throw new ApiError(404, "Coupon not found");
   }
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "coupon.update",
+    entityType: "coupon",
+    entityId: coupon._id,
+    summary: `Cập nhật mã giảm giá: ${coupon.code}`,
+    metadata: { fields: Object.keys(request.body || {}) },
+  });
+
   response.json(coupon);
 });
 
@@ -74,6 +93,14 @@ export const deleteCoupon = asyncHandler(async (request, response) => {
   if (!coupon) {
     throw new ApiError(404, "Coupon not found");
   }
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "coupon.deactivate",
+    entityType: "coupon",
+    entityId: coupon._id,
+    summary: `Ngừng mã giảm giá: ${coupon.code}`,
+  });
 
   response.json({ message: "Coupon deactivated", coupon });
 });

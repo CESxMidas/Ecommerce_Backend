@@ -21,6 +21,10 @@ export const PERMISSIONS = {
   "tickets.manage": ["OWNER", "MANAGER", "STAFF"],
   "reviews.manage": ["OWNER", "MANAGER"],
   "audit.view": ["OWNER"],
+  "profile.view": ["OWNER", "MANAGER", "STAFF"],
+  "content.submit": ["OWNER", "MANAGER", "STAFF"],
+  "content.approve": ["OWNER"],
+  "content.review_queue": ["OWNER", "MANAGER"],
 };
 
 export function normalizeRole(role) {

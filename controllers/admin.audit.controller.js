@@ -29,6 +29,13 @@ export const adminGetAuditLogs = asyncHandler(async (request, response) => {
     filter.entityType = String(request.query.entityType);
   }
 
+  if (request.query.actor) {
+    const actor = String(request.query.actor).trim();
+    if (actor) {
+      filter.actorName = { $regex: actor, $options: "i" };
+    }
+  }
+
   if (request.query.q) {
     const query = String(request.query.q).trim();
     if (query) {

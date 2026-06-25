@@ -1,6 +1,7 @@
 import BlogModel from "../models/blog.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 const BLOG_WRITABLE_FIELDS = new Set([
   "title",
@@ -88,6 +89,15 @@ export const createBlog = asyncHandler(async (request, response) => {
   }
 
   const blog = await BlogModel.create(payload);
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "blog.create",
+    entityType: "blog",
+    entityId: blog._id,
+    summary: `Tạo bài viết: ${blog.title}`,
+  });
+
   response.status(201).json(blog);
 });
 
@@ -129,6 +139,15 @@ export const updateBlog = asyncHandler(async (request, response) => {
     throw new ApiError(404, "Blog not found");
   }
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "blog.update",
+    entityType: "blog",
+    entityId: blog._id,
+    summary: `Cập nhật bài viết: ${blog.title}`,
+    metadata: { fields: Object.keys(payload) },
+  });
+
   response.json(blog);
 });
 
@@ -142,6 +161,14 @@ export const deleteBlog = asyncHandler(async (request, response) => {
   if (!blog) {
     throw new ApiError(404, "Blog not found");
   }
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "blog.deactivate",
+    entityType: "blog",
+    entityId: blog._id,
+    summary: `Ngừng bài viết: ${blog.title}`,
+  });
 
   response.json({ message: "Blog deactivated", blog });
 });

@@ -11,6 +11,7 @@ import {
   buildCategoryTree,
   rollupProductCounts,
 } from "../utils/categoryHelpers.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 async function assertValidParent(categoryId, parentId) {
   if (parentId == null || parentId === "") {
@@ -167,6 +168,14 @@ export const createCategory = asyncHandler(async (request, response) => {
     isActive: request.body.isActive !== false,
   });
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "category.create",
+    entityType: "category",
+    entityId: category.categoryId,
+    summary: `Tạo danh mục #${category.categoryId}: ${category.name}`,
+  });
+
   response.status(201).json(formatCategory(category));
 });
 
@@ -202,6 +211,15 @@ export const updateCategory = asyncHandler(async (request, response) => {
   if (!category) {
     throw new ApiError(404, "Category not found");
   }
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "category.update",
+    entityType: "category",
+    entityId: category.categoryId,
+    summary: `Cập nhật danh mục #${category.categoryId}: ${category.name}`,
+    metadata: { fields: Object.keys(payload) },
+  });
 
   response.json(formatCategory(category));
 });
@@ -244,6 +262,14 @@ export const deleteCategory = asyncHandler(async (request, response) => {
     { isActive: false },
     { new: true },
   );
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "category.deactivate",
+    entityType: "category",
+    entityId: categoryId,
+    summary: `Ngừng danh mục #${categoryId}: ${category.name}`,
+  });
 
   response.json({
     message: "Category deactivated",

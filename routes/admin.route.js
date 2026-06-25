@@ -33,6 +33,15 @@ import {
 } from "../controllers/admin.staff.controller.js";
 import { getAnalyticsOverview } from "../controllers/admin.analytics.controller.js";
 import { adminGetAuditLogs } from "../controllers/admin.audit.controller.js";
+import {
+  adminApproveContentRevision,
+  adminCancelContentRevision,
+  adminCreateContentRevision,
+  adminGetContentRevision,
+  adminListContentRevisions,
+  adminRejectContentRevision,
+  adminSubmitContentRevision,
+} from "../controllers/admin.contentRevision.controller.js";
 import { adminGetNotifications } from "../controllers/admin.notification.controller.js";
 import {
   adminDeleteReview,
@@ -78,6 +87,42 @@ router.get("/analytics/overview", requirePermission("reports.view"), getAnalytic
 router.get("/search", requirePermission("dashboard.view"), adminGlobalSearch);
 router.get("/notifications", requirePermission("dashboard.view"), adminGetNotifications);
 router.get("/audit", requirePermission("audit.view"), adminGetAuditLogs);
+
+router.get(
+  "/content-revisions",
+  requireAnyPermission("content.approve", "content.review_queue", "content.submit"),
+  adminListContentRevisions,
+);
+router.get(
+  "/content-revisions/:id",
+  requireAnyPermission("content.approve", "content.review_queue", "content.submit"),
+  adminGetContentRevision,
+);
+router.post(
+  "/content-revisions",
+  requirePermission("content.submit"),
+  adminCreateContentRevision,
+);
+router.post(
+  "/content-revisions/:id/submit",
+  requirePermission("content.submit"),
+  adminSubmitContentRevision,
+);
+router.post(
+  "/content-revisions/:id/approve",
+  requirePermission("content.approve"),
+  adminApproveContentRevision,
+);
+router.post(
+  "/content-revisions/:id/reject",
+  requirePermission("content.approve"),
+  adminRejectContentRevision,
+);
+router.post(
+  "/content-revisions/:id/cancel",
+  requireAnyPermission("content.approve", "content.submit"),
+  adminCancelContentRevision,
+);
 
 router.get("/tickets", requirePermission("tickets.manage"), adminGetTickets);
 router.get("/tickets/:id", requirePermission("tickets.manage"), adminGetTicketById);

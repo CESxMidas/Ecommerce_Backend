@@ -24,9 +24,11 @@ import {
   addTicketReply,
   updateAddress,
   updateProfile,
+  uploadAvatar,
   verifyEmailChange,
 } from "../controllers/user.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
+import { uploadMiddleware } from "../controllers/upload.controller.js";
 
 const router = Router();
 
@@ -34,6 +36,7 @@ router.use(protect);
 
 router.get("/profile", getProfile);
 router.patch("/profile", updateProfile);
+router.post("/profile/avatar", uploadMiddleware, uploadAvatar);
 router.post("/profile/password", changePassword);
 router.post("/profile/email/request", requestEmailChange);
 router.post("/profile/email/verify", verifyEmailChange);

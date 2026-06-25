@@ -25,6 +25,10 @@ import {
   sendEmailChangeVerificationEmail,
   sendLicenseKeysEmail,
 } from "../utils/email.js";
+import {
+  isCloudinaryConfigured,
+  uploadBufferToCloudinary,
+} from "../utils/cloudinaryUpload.js";
 
 function createOtp() {
   return String(crypto.randomInt(100000, 999999));
@@ -48,7 +52,13 @@ async function createNotification(userId, payload) {
 }
 
 export const getProfile = asyncHandler(async (request, response) => {
-  response.json(formatProfile(request.user));
+  const user = await UserModel.findById(request.user._id).select("+password");
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  response.json(formatProfile(user));
 });
 
 export const updateProfile = asyncHandler(async (request, response) => {
@@ -79,7 +89,47 @@ export const updateProfile = asyncHandler(async (request, response) => {
 
   await user.save();
 
-  response.json(formatProfile(user));
+  const savedUser = await UserModel.findById(user._id).select("+password");
+  response.json(formatProfile(savedUser));
+});
+
+export const uploadAvatar = asyncHandler(async (request, response) => {
+  if (!request.file) {
+    throw new ApiError(400, "Image file is required");
+  }
+
+  if (!request.file.mimetype?.startsWith("image/")) {
+    throw new ApiError(400, "Only image files are allowed");
+  }
+
+  if (!isCloudinaryConfigured()) {
+    throw new ApiError(
+      503,
+      "Cloudinary chưa cấu hình. Không thể tải ảnh lên lúc này.",
+    );
+  }
+
+  const result = await uploadBufferToCloudinary(request.file.buffer, "avatars", {
+    transformation: [
+      { width: 512, height: 512, crop: "fill", gravity: "auto" },
+      { quality: "auto", fetch_format: "auto" },
+    ],
+  });
+  const user = await UserModel.findById(request.user._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  user.avatar = result.url;
+  await user.save();
+
+  const savedUser = await UserModel.findById(user._id).select("+password");
+
+  response.status(201).json({
+    url: result.url,
+    profile: formatProfile(savedUser),
+  });
 });
 
 export const requestEmailChange = asyncHandler(async (request, response) => {

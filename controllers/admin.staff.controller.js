@@ -10,6 +10,7 @@ import {
   isOwnerRole,
   OWNER_ROLES,
 } from "../utils/permissions.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 async function assertCanModifyStaffAccount(target, nextRole, nextStatus) {
   const becomesNonOwner =
@@ -84,6 +85,15 @@ export const adminCreateStaff = asyncHandler(async (request, response) => {
     authProvider: "local",
   });
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "staff.create",
+    entityType: "staff",
+    entityId: user._id,
+    summary: `Tạo nhân viên ${user.name} (${user.email}) — vai trò ${role}`,
+    metadata: { role },
+  });
+
   response.status(201).json(formatAdminStaff(user));
 });
 
@@ -142,6 +152,20 @@ export const adminUpdateStaff = asyncHandler(async (request, response) => {
   }
 
   await staff.save();
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "staff.update",
+    entityType: "staff",
+    entityId: staff._id,
+    summary: `Cập nhật nhân viên ${staff.name} (${staff.email})`,
+    metadata: {
+      role: staff.role,
+      status: staff.status,
+      name: staff.name,
+    },
+  });
+
   response.json(formatAdminStaff(staff));
 });
 
@@ -165,6 +189,14 @@ export const adminResetStaffPassword = asyncHandler(async (request, response) =>
   staff.password = await bcrypt.hash(password, 10);
   staff.lastPasswordChangeAt = new Date();
   await staff.save();
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "staff.reset_password",
+    entityType: "staff",
+    entityId: staff._id,
+    summary: `Đặt lại mật khẩu nhân viên ${staff.name} (${staff.email})`,
+  });
 
   response.json({ message: "Password updated" });
 });

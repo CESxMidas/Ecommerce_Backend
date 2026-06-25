@@ -1,6 +1,7 @@
 import SiteSettingsModel from "../models/siteSettings.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 const SETTINGS_KEY = "global";
 const WRITABLE_FIELDS = new Set(["siteName", "logoAlt", "logoUrl", "faviconUrl"]);
@@ -72,6 +73,15 @@ export const adminUpdateSiteSettings = asyncHandler(async (request, response) =>
     payload,
     { new: true, upsert: true, setDefaultsOnInsert: true },
   );
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "settings.update",
+    entityType: "settings",
+    entityId: SETTINGS_KEY,
+    summary: `Cập nhật cài đặt shop (${Object.keys(payload).join(", ")})`,
+    metadata: { fields: Object.keys(payload) },
+  });
 
   response.json(formatSiteSettings(settings));
 });

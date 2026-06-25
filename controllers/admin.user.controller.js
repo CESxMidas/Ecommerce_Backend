@@ -3,6 +3,7 @@ import OrderModel from "../models/order.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatAdminUser, formatAdminUserDetail, formatOrder } from "../utils/formatters.js";
 import { ApiError } from "../utils/apiError.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 async function getOrderCountMap(emails) {
   if (!emails.length) {
@@ -83,6 +84,15 @@ export const adminUpdateUser = asyncHandler(async (request, response) => {
   }
 
   await user.save();
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "customer.update",
+    entityType: "customer",
+    entityId: user._id,
+    summary: `Cập nhật khách hàng ${user.name || user.email} — trạng thái ${user.status}`,
+    metadata: { status: user.status },
+  });
 
   const orderCount = await OrderModel.countDocuments({ email: user.email });
   response.json(formatAdminUser(user, orderCount));

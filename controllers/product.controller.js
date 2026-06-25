@@ -10,6 +10,7 @@ import { syncProductReviewStats } from "../utils/reviewHelpers.js";
 import { validateProductPayload } from "../validators/schema.validator.js";
 import { getNextSequence } from "../utils/sequence.js";
 import { enrichFormattedProductsWithPoolStock, enrichFormattedProductWithPoolStock } from "../utils/licenseKeyPool.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 const PRODUCT_SEQUENCE = "productId";
 const PRODUCT_WRITABLE_FIELDS = new Set([
@@ -293,6 +294,15 @@ export const createProduct = asyncHandler(async (request, response) => {
     productId: nextId,
   });
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "product.create",
+    entityType: "product",
+    entityId: product.productId,
+    summary: `Tạo sản phẩm #${product.productId}: ${product.name || product.title || ""}`,
+    metadata: { productId: product.productId, slug: product.slug },
+  });
+
   response.status(201).json(formatProduct(product));
 });
 
@@ -316,6 +326,15 @@ export const updateProduct = asyncHandler(async (request, response) => {
     throw new ApiError(404, "Product not found");
   }
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "product.update",
+    entityType: "product",
+    entityId: product.productId,
+    summary: `Cập nhật sản phẩm #${product.productId}: ${product.name || product.title || ""}`,
+    metadata: { fields: Object.keys(payload) },
+  });
+
   response.json(formatProduct(product));
 });
 
@@ -331,6 +350,14 @@ export const deleteProduct = asyncHandler(async (request, response) => {
   if (!product) {
     throw new ApiError(404, "Product not found");
   }
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "product.deactivate",
+    entityType: "product",
+    entityId: productId,
+    summary: `Ngừng bán sản phẩm #${productId}: ${product.name || product.title || ""}`,
+  });
 
   response.json({ message: "Product removed" });
 });

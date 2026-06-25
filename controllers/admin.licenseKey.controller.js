@@ -8,6 +8,7 @@ import {
   listPoolKeys,
   revokeAvailableKey,
 } from "../utils/licenseKeyPool.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 function parseKeysPayload(body = {}) {
   if (Array.isArray(body.keys)) {
@@ -76,6 +77,15 @@ export const importProductKeys = asyncHandler(async (request, response) => {
     importedBy: request.user?._id || null,
   });
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "keys.import",
+    entityType: "product_keys",
+    entityId: productId,
+    summary: `Import ${result.imported ?? keys.length} key cho SP #${productId}`,
+    metadata: { imported: result.imported, skippedDuplicates: result.skippedDuplicates },
+  });
+
   response.status(201).json(result);
 });
 
@@ -84,6 +94,15 @@ export const revokeProductKey = asyncHandler(async (request, response) => {
   await getPoolProduct(productId);
 
   const doc = await revokeAvailableKey(productId, request.params.keyId);
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "keys.revoke",
+    entityType: "product_keys",
+    entityId: productId,
+    summary: `Thu hồi key SP #${productId}`,
+    metadata: { keyId: request.params.keyId },
+  });
 
   response.json({
     message: "Key revoked",

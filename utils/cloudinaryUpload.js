@@ -29,7 +29,11 @@ export function isCloudinaryConfigured() {
   return ensureCloudinary();
 }
 
-export async function uploadBufferToCloudinary(buffer, folder = "ecommerce") {
+export async function uploadBufferToCloudinary(
+  buffer,
+  folder = "ecommerce",
+  uploadOptions = {},
+) {
   if (!ensureCloudinary()) {
     throw new Error(
       "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET",
@@ -38,7 +42,7 @@ export async function uploadBufferToCloudinary(buffer, folder = "ecommerce") {
 
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: "image" },
+      { folder, resource_type: "image", ...uploadOptions },
       (error, result) => {
         if (error) {
           reject(error);

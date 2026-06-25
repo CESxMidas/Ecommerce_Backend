@@ -9,6 +9,7 @@ import {
   parseAccountCredentialLines,
   revokeAvailableAccount,
 } from "../utils/accountCredentialPool.js";
+import { writeAuditLog } from "../utils/auditLog.js";
 
 function parseAccountsPayload(body = {}) {
   if (Array.isArray(body.accounts)) {
@@ -81,6 +82,15 @@ export const importProductAccounts = asyncHandler(async (request, response) => {
     importedBy: request.user?._id || null,
   });
 
+  await writeAuditLog({
+    actor: request.user,
+    action: "accounts.import",
+    entityType: "product_accounts",
+    entityId: productId,
+    summary: `Import ${result.imported ?? accounts.length} tài khoản cho SP #${productId}`,
+    metadata: { imported: result.imported, skippedDuplicates: result.skippedDuplicates },
+  });
+
   response.status(201).json(result);
 });
 
@@ -89,6 +99,15 @@ export const revokeProductAccount = asyncHandler(async (request, response) => {
   await getAccountPoolProduct(productId);
 
   const doc = await revokeAvailableAccount(productId, request.params.accountId);
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "accounts.revoke",
+    entityType: "product_accounts",
+    entityId: productId,
+    summary: `Thu hồi tài khoản SP #${productId}`,
+    metadata: { accountId: request.params.accountId, username: doc.username },
+  });
 
   response.json({
     message: "Account revoked",
