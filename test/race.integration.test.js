@@ -1,3 +1,4 @@
+import "./helpers/setupEnv.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
