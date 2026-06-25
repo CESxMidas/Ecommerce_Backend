@@ -11,10 +11,22 @@ import { markPaymentPaid } from "../services/payment.service.js";
 import { markPaymentFailed } from "../utils/orderLifecycle.js";
 
 function getClientRedirect(path) {
-  const clientOrigin = (process.env.CORS_ORIGIN || "http://localhost:3000")
+  const explicitFrontend = process.env.FRONTEND_URL?.trim().replace(/\/$/, "");
+
+  if (explicitFrontend) {
+    return `${explicitFrontend}${path}`;
+  }
+
+  const origins = (process.env.CORS_ORIGIN || "http://localhost:3000")
     .split(",")
     .map((origin) => origin.trim())
-    .filter(Boolean)[0];
+    .filter(Boolean);
+
+  const clientOrigin =
+    origins.find(
+      (origin) =>
+        origin.startsWith("https://") && !origin.includes("localhost"),
+    ) || origins[0];
 
   return `${clientOrigin}${path}`;
 }
