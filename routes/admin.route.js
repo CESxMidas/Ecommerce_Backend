@@ -65,7 +65,10 @@ import {
   adminUpdateUser,
 } from "../controllers/admin.user.controller.js";
 import { getDashboardStats } from "../controllers/admin.controller.js";
-import { adminGetProducts } from "../controllers/product.controller.js";
+import {
+  adminGetProductById,
+  adminGetProducts,
+} from "../controllers/product.controller.js";
 import {
   uploadImage,
   uploadMiddleware,
@@ -179,6 +182,11 @@ router.post(
 );
 
 router.get("/products", requirePermission("products.manage"), adminGetProducts);
+router.get(
+  "/products/:productId",
+  requirePermission("products.manage"),
+  adminGetProductById,
+);
 router.get(
   "/products/:productId/keys/stats",
   requirePermission("keys.manage"),

@@ -2,6 +2,10 @@ import ProductModel from "../models/product.model.js";
 import CategoryModel from "../models/category.model.js";
 import ReviewModel from "../models/review.model.js";
 import OrderModel from "../models/order.model.js";
+import CartModel from "../models/cart.model.js";
+import WishlistModel from "../models/wishlist.model.js";
+import LicenseKeyModel from "../models/licenseKey.model.js";
+import AccountCredentialModel from "../models/accountCredential.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatProduct, formatReview } from "../utils/formatters.js";
 import { ApiError, throwIfInvalid } from "../utils/apiError.js";
@@ -10,6 +14,7 @@ import { syncProductReviewStats } from "../utils/reviewHelpers.js";
 import { validateProductPayload } from "../validators/schema.validator.js";
 import { getNextSequence } from "../utils/sequence.js";
 import { enrichFormattedProductsWithPoolStock, enrichFormattedProductWithPoolStock } from "../utils/licenseKeyPool.js";
+import { normalizeProductVariants } from "../utils/productVariants.js";
 import { writeAuditLog } from "../utils/auditLog.js";
 
 const PRODUCT_SEQUENCE = "productId";
@@ -45,13 +50,19 @@ const PRODUCT_WRITABLE_FIELDS = new Set([
 ]);
 
 function pickProductPayload(body = {}) {
-  return Object.entries(body).reduce((payload, [key, value]) => {
+  const payload = Object.entries(body).reduce((result, [key, value]) => {
     if (PRODUCT_WRITABLE_FIELDS.has(key) && !key.startsWith("$")) {
-      payload[key] = value;
+      result[key] = value;
     }
 
-    return payload;
+    return result;
   }, {});
+
+  if (Array.isArray(payload.variants)) {
+    payload.variants = normalizeProductVariants(payload.variants, payload.discountPrice ?? payload.price);
+  }
+
+  return payload;
 }
 
 function escapeRegex(value) {
@@ -257,7 +268,7 @@ export const getProductById = asyncHandler(async (request, response) => {
   const isNumeric = !Number.isNaN(Number(param));
 
   const product = isNumeric
-    ? await ProductModel.findOne({ productId: Number(param) })
+    ? await ProductModel.findOne({ productId: Number(param), isActive: true })
     : await ProductModel.findOne({
         slug: String(param).toLowerCase(),
         isActive: true,
@@ -275,6 +286,16 @@ export const adminGetProducts = asyncHandler(async (request, response) => {
   response.json(
     await enrichFormattedProductsWithPoolStock(products.map(formatProduct)),
   );
+});
+
+export const adminGetProductById = asyncHandler(async (request, response) => {
+  const product = await ProductModel.findOne({ productId: Number(request.params.productId) });
+
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+
+  response.json(await enrichFormattedProductWithPoolStock(formatProduct(product)));
 });
 
 export const createProduct = asyncHandler(async (request, response) => {
@@ -360,6 +381,51 @@ export const deleteProduct = asyncHandler(async (request, response) => {
   });
 
   response.json({ message: "Product removed" });
+});
+
+export const hardDeleteProduct = asyncHandler(async (request, response) => {
+  const productId = Number(request.params.id);
+
+  const product = await ProductModel.findOneAndDelete({ productId });
+
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+
+  const [reviews, carts, wishlists, keys, accounts] = await Promise.all([
+    ReviewModel.deleteMany({ productId }),
+    CartModel.updateMany({}, { $pull: { items: { productId } } }),
+    WishlistModel.updateMany({}, { $pull: { items: { productId } } }),
+    LicenseKeyModel.deleteMany({ productId }),
+    AccountCredentialModel.deleteMany({ productId }),
+  ]);
+
+  await writeAuditLog({
+    actor: request.user,
+    action: "product.hard_delete",
+    entityType: "product",
+    entityId: productId,
+    summary: `Xóa khỏi DB sản phẩm #${productId}: ${product.name || product.title || ""}`,
+    metadata: {
+      reviewsDeleted: reviews.deletedCount,
+      cartsUpdated: carts.modifiedCount,
+      wishlistsUpdated: wishlists.modifiedCount,
+      keysDeleted: keys.deletedCount,
+      accountsDeleted: accounts.deletedCount,
+    },
+  });
+
+  response.json({
+    message: "Product permanently deleted",
+    deleted: {
+      product: 1,
+      reviews: reviews.deletedCount,
+      carts: carts.modifiedCount,
+      wishlists: wishlists.modifiedCount,
+      keys: keys.deletedCount,
+      accounts: accounts.deletedCount,
+    },
+  });
 });
 
 export const getProductReviews = asyncHandler(async (request, response) => {

@@ -85,6 +85,21 @@ export function validateProductPayload(body, { partial = false } = {}) {
     errors.push("Variants must be an array");
   }
 
+  if (Array.isArray(body.variants)) {
+    for (const variant of body.variants) {
+      if (!variant || typeof variant !== "object") {
+        errors.push("Each variant must be an object");
+        break;
+      }
+
+      const priceError = validateNumber(variant.price, "Variant price", { min: 0 });
+      if (priceError) {
+        errors.push(priceError);
+        break;
+      }
+    }
+  }
+
   return compactErrors(errors);
 }
 
