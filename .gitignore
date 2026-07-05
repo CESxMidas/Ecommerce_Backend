@@ -1,5 +1,6 @@
 node_modules/
 .env
+.env.test
 .env.local
 .env.*.local
 npm-debug.log*
@@ -9,3 +10,8 @@ yarn-error.log*
 *.pem
 coverage/
 .nyc_output/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
