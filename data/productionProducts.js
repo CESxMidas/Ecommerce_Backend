@@ -24,13 +24,13 @@ const IMAGES = {
   pc: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?q=80&w=1200&auto=format&fit=crop",
   miniPc:
     "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=1200&auto=format&fit=crop",
-  ram: "https://images.unsplash.com/photo-1562976540-8e0b4d0e0a0e?q=80&w=1200&auto=format&fit=crop",
+  ram: "https://images.unsplash.com/photo-1540928349545-1baf2ae1ecbe?q=80&w=1200&auto=format&fit=crop",
   ssd: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?q=80&w=1200&auto=format&fit=crop",
   cpu: "https://images.unsplash.com/photo-1555617981-dac3880eac6e?q=80&w=1200&auto=format&fit=crop",
   gpu:
     "https://images.unsplash.com/photo-1591488320449-011701bb6704?q=80&w=1200&auto=format&fit=crop",
   mainboard:
-    "https://images.unsplash.com/photo-1518770660439-463619bfaf94?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1777672673948-d543ba5c1178?q=80&w=1200&auto=format&fit=crop",
   psu: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?q=80&w=1200&auto=format&fit=crop",
   mouse:
     "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?q=80&w=1200&auto=format&fit=crop",
@@ -39,7 +39,7 @@ const IMAGES = {
   headset:
     "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop",
   webcam:
-    "https://images.unsplash.com/photo-1587826080695-d3c2fcbb8b8b?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1670278458296-00ff8a63141e?q=80&w=1200&auto=format&fit=crop",
   monitor:
     "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=1200&auto=format&fit=crop",
   speaker:
