@@ -285,8 +285,12 @@ export function assertEmailSent(mailResult) {
   }
 
   if (!mailResult?.sent) {
+    const provider = isResendConfigured() ? "Resend" : "Gmail";
+    const hint = isResendConfigured()
+      ? "Kiểm tra RESEND_API_KEY và domain người gửi (EMAIL_FROM) đã verify tại resend.com/domains — sender test onboarding@resend.dev chỉ gửi được tới email chủ tài khoản Resend."
+      : "Kiểm tra App Password và thử lại.";
     throw new Error(
-      `Không gửi được email Gmail: ${mailResult?.reason || "unknown"}. Kiểm tra App Password và thử lại.`,
+      `Không gửi được email qua ${provider}: ${mailResult?.reason || "unknown"}. ${hint}`,
     );
   }
 }
