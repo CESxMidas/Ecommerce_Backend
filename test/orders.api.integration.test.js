@@ -89,6 +89,38 @@ test.describe("Orders API integration", { skip: !mongoUrl }, () => {
     assert.ok(orders.some((order) => order.id === response.body.id));
   });
 
+  test("POST /orders ignores client-supplied total and variant price, recomputes from DB", async () => {
+    const token = await loginAndGetToken();
+    const auth = { Authorization: `Bearer ${token}` };
+    const quantity = 2;
+    const expectedTotal = TEST_PRODUCTS.physical.price * quantity;
+
+    const response = await request(app)
+      .post("/api/orders")
+      .set(auth)
+      .send({
+        name: TEST_USER.name,
+        email: TEST_USER.email,
+        phone: "+84901234567",
+        address: "123 QA Street, District 1, HCM",
+        // Malicious client values — all must be ignored by the server.
+        total: 1000,
+        items: [
+          {
+            productId: TEST_PRODUCTS.physical.productId,
+            quantity,
+            variant: { id: "spoofed", price: 1 },
+          },
+        ],
+        paymentMethod: "cod",
+      });
+
+    assert.equal(response.status, 201);
+    assert.equal(response.body.total, expectedTotal);
+    assert.equal(response.body.subtotal, expectedTotal);
+    assert.equal(response.body.items[0].unitPrice, TEST_PRODUCTS.physical.price);
+  });
+
   test("simulated VNPay payment marks digital order as paid", async () => {
     const token = await loginAndGetToken();
     const auth = { Authorization: `Bearer ${token}` };
