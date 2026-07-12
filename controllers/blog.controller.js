@@ -131,7 +131,7 @@ export const updateBlog = asyncHandler(async (request, response) => {
   }
 
   const blog = await BlogModel.findByIdAndUpdate(request.params.id, payload, {
-    new: true,
+    returnDocument: "after",
     runValidators: true,
   });
 
@@ -155,7 +155,7 @@ export const deleteBlog = asyncHandler(async (request, response) => {
   const blog = await BlogModel.findByIdAndUpdate(
     request.params.id,
     { isActive: false },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!blog) {

@@ -71,7 +71,7 @@ export const adminUpdateSiteSettings = asyncHandler(async (request, response) =>
   const settings = await SiteSettingsModel.findOneAndUpdate(
     { key: SETTINGS_KEY },
     payload,
-    { new: true, upsert: true, setDefaultsOnInsert: true },
+    { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
   );
 
   await writeAuditLog({

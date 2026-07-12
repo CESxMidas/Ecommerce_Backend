@@ -23,6 +23,11 @@ export const PAYMENT_STATUS = Object.freeze({
   REFUNDED: "refunded",
 });
 
+// How long an online (non-COD) order stays payable before it expires. Shared by
+// order creation, payment-session creation, and the "pay again" flow so the
+// countdown stays consistent across all three.
+export const PAYMENT_WINDOW_MS = 5 * 60 * 1000;
+
 const VALID_ADMIN_TRANSITIONS = {
   [ORDER_STATUS.PENDING_PAYMENT]: [
     ORDER_STATUS.PROCESSING,
@@ -142,7 +147,7 @@ export async function decrementStockForItems(items = [], session = null) {
         stock: { $gte: item.quantity },
       },
       { $inc: { stock: -item.quantity } },
-      { new: true, session },
+      { returnDocument: "after", session },
     );
 
     if (!updated) {

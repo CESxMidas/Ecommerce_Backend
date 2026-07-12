@@ -22,6 +22,7 @@ import { isStaffRole } from "../utils/permissions.js";
 import {
   ORDER_STATUS,
   PAYMENT_STATUS,
+  PAYMENT_WINDOW_MS,
   assertTransitionAllowed,
   decrementStockForItems,
   expireStalePendingOrders,
@@ -179,7 +180,7 @@ export const hideOrder = asyncHandler(async (req, res) => {
     {
       $addToSet: { hiddenByUsers: req.user._id },
     },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!order) throw new ApiError(404, "Order not found");
@@ -270,7 +271,7 @@ export const createOrder = asyncHandler(async (req, res) => {
       const expiresAtValue =
         paymentSession.paymentStatus !== PAYMENT_STATUS.PAID &&
         normalizedPaymentMethod !== "cod"
-          ? new Date(Date.now() + 5 * 60 * 1000)
+          ? new Date(Date.now() + PAYMENT_WINDOW_MS)
           : undefined;
       const stockDeducted = shouldDeductStockImmediately(
         normalizedPaymentMethod,
@@ -302,7 +303,7 @@ export const createOrder = asyncHandler(async (req, res) => {
             couponCode: appliedCouponCode,
             tax: totals.tax,
             shippingFee: totals.shippingFee,
-            currency: String(currency || "VND").trim().toUpperCase(),
+            currency: orderCurrency,
             total: totals.total,
             email: (req.user?.email || email).trim().toLowerCase(),
             userId: userId || req.user?.email,
@@ -423,10 +424,16 @@ export const cancelOrder = asyncHandler(async (req, res) => {
 
       assertTransitionAllowed(order.status, ORDER_STATUS.CANCELLED, false);
 
+      // Only paid orders can have digital items already delivered. Grouping the
+      // two "has digital item" checks avoids the &&/|| precedence trap where
+      // account-credential orders were blocked even before payment.
+      const hasDeliveredDigitalItems = (order.items || []).some(
+        (item) => item.licenseKeys?.length || item.accountCredentials?.length,
+      );
+
       if (
         order.paymentStatus === PAYMENT_STATUS.PAID &&
-        (order.items || []).some((item) => item.licenseKeys?.length) ||
-        (order.items || []).some((item) => item.accountCredentials?.length)
+        hasDeliveredDigitalItems
       ) {
         throw new ApiError(
           400,

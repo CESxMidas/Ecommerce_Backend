@@ -185,6 +185,11 @@ export const updateCategory = asyncHandler(async (request, response) => {
   const categoryId = Number(request.params.id);
   const payload = { ...request.body };
 
+  // The category is identified by the URL param; never let the body reassign
+  // its identity (categoryId/_id) through the spread.
+  delete payload.categoryId;
+  delete payload._id;
+
   if (payload.slug != null) {
     payload.slug = String(payload.slug).trim().toLowerCase();
 
@@ -205,7 +210,7 @@ export const updateCategory = asyncHandler(async (request, response) => {
   const category = await CategoryModel.findOneAndUpdate(
     { categoryId },
     payload,
-    { new: true, runValidators: true },
+    { returnDocument: "after", runValidators: true },
   );
 
   if (!category) {
@@ -260,7 +265,7 @@ export const deleteCategory = asyncHandler(async (request, response) => {
   const updated = await CategoryModel.findOneAndUpdate(
     { categoryId },
     { isActive: false },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   await writeAuditLog({

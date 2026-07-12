@@ -189,7 +189,7 @@ export async function reserveAccountsForItems(items = [], orderId, session = nul
       const reserved = await AccountCredentialModel.findOneAndUpdate(
         { productId, status: "available" },
         { $set: { status: "reserved", orderId } },
-        { new: true, session, sort: { createdAt: 1 } },
+        { returnDocument: "after", session, sort: { createdAt: 1 } },
       );
 
       if (!reserved) {
@@ -308,7 +308,7 @@ export async function revokeAvailableAccount(productId, accountId) {
       status: "available",
     },
     { $set: { status: "revoked" } },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!doc) {

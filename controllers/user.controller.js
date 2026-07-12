@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 
 import UserModel from "../models/user.model.js";
 import AddressModel from "../models/address.model.js";
@@ -29,17 +28,7 @@ import {
   isCloudinaryConfigured,
   uploadBufferToCloudinary,
 } from "../utils/cloudinaryUpload.js";
-
-function createOtp() {
-  return String(crypto.randomInt(100000, 999999));
-}
-
-function hashOtp(email, otp) {
-  return crypto
-    .createHash("sha256")
-    .update(`${String(email).trim().toLowerCase()}:${String(otp).trim()}`)
-    .digest("hex");
-}
+import { OTP_EXPIRY_MS, OTP_PURPOSE, createOtp, hashOtp } from "../utils/otp.js";
 
 async function createNotification(userId, payload) {
   return NotificationModel.create({
@@ -158,8 +147,12 @@ export const requestEmailChange = asyncHandler(async (request, response) => {
 
   const otp = createOtp();
   request.user.email_change_new = nextEmail;
-  request.user.email_change_otp_hash = hashOtp(nextEmail, otp);
-  request.user.email_change_expiry = new Date(Date.now() + 15 * 60 * 1000);
+  request.user.email_change_otp_hash = hashOtp(
+    nextEmail,
+    otp,
+    OTP_PURPOSE.CHANGE_EMAIL,
+  );
+  request.user.email_change_expiry = new Date(Date.now() + OTP_EXPIRY_MS);
   await request.user.save();
 
   const mailResult = await sendEmailChangeVerificationEmail({
@@ -188,7 +181,10 @@ export const verifyEmailChange = asyncHandler(async (request, response) => {
     throw new ApiError(400, "Invalid or expired verification code");
   }
 
-  if (hashOtp(user.email_change_new, otp) !== user.email_change_otp_hash) {
+  if (
+    hashOtp(user.email_change_new, otp, OTP_PURPOSE.CHANGE_EMAIL) !==
+    user.email_change_otp_hash
+  ) {
     throw new ApiError(400, "Invalid or expired verification code");
   }
 
@@ -316,10 +312,34 @@ export const createAddress = asyncHandler(async (request, response) => {
   response.status(201).json(formatAddress(address));
 });
 
+// Only these fields may be changed through the update endpoint. Whitelisting
+// prevents a client from smuggling in ownership/soft-delete fields such as
+// `userId` or `status` via the request body (mass-assignment protection).
+const EDITABLE_ADDRESS_FIELDS = [
+  "label",
+  "fullName",
+  "address_line",
+  "city",
+  "state",
+  "pincode",
+  "country",
+  "mobile",
+  "province",
+  "district",
+  "ward",
+  "isDefault",
+];
+
 export const updateAddress = asyncHandler(async (request, response) => {
   throwIfInvalid(validateAddressPayload(request.body, { partial: true }));
 
-  const updates = { ...request.body };
+  const updates = {};
+
+  for (const field of EDITABLE_ADDRESS_FIELDS) {
+    if (request.body[field] !== undefined) {
+      updates[field] = request.body[field];
+    }
+  }
 
   if (updates.isDefault === true) {
     await AddressModel.updateMany(
@@ -331,7 +351,7 @@ export const updateAddress = asyncHandler(async (request, response) => {
   const address = await AddressModel.findOneAndUpdate(
     { _id: request.params.id, userId: request.user._id },
     updates,
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!address) {
@@ -367,7 +387,7 @@ export const deleteAddress = asyncHandler(async (request, response) => {
   const address = await AddressModel.findOneAndUpdate(
     { _id: request.params.id, userId: request.user._id },
     { status: false, isDefault: false },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!address) {
@@ -410,14 +430,17 @@ export const deleteAllSessions = asyncHandler(async (request, response) => {
   response.json({ message: "All sessions removed" });
 });
 
-function collectLicenseEntries(orders) {
+// License keys and premium-account credentials are delivered per order item in
+// exactly the same shape; only the source item field and the output key differ.
+// `sourceField` = item property to read, `outputKey` = key on the returned entry.
+function collectDigitalDeliveryEntries(orders, { sourceField, outputKey }) {
   const entries = [];
 
   orders.forEach((order) => {
     const formatted = formatOrder(order);
 
     formatted.items
-      .filter((item) => item.licenseKeys?.length)
+      .filter((item) => item[sourceField]?.length)
       .forEach((item) => {
         entries.push({
           id: `${formatted.id}-${item.productId}`,
@@ -426,13 +449,20 @@ function collectLicenseEntries(orders) {
           productName:
             item.product?.name || item.product?.title || `Product ${item.productId}`,
           thumbnail: item.product?.thumbnail || item.product?.image || "",
-          keys: item.licenseKeys,
+          [outputKey]: item[sourceField],
           createdAt: formatted.createdAt,
         });
       });
   });
 
   return entries;
+}
+
+function collectLicenseEntries(orders) {
+  return collectDigitalDeliveryEntries(orders, {
+    sourceField: "licenseKeys",
+    outputKey: "keys",
+  });
 }
 
 export const getLicenses = asyncHandler(async (request, response) => {
@@ -475,28 +505,10 @@ export const resendLicenseKeys = asyncHandler(async (request, response) => {
 });
 
 function collectPremiumAccountEntries(orders) {
-  const entries = [];
-
-  orders.forEach((order) => {
-    const formatted = formatOrder(order);
-
-    formatted.items
-      .filter((item) => item.accountCredentials?.length)
-      .forEach((item) => {
-        entries.push({
-          id: `${formatted.id}-${item.productId}`,
-          orderId: formatted.id,
-          productId: item.productId,
-          productName:
-            item.product?.name || item.product?.title || `Product ${item.productId}`,
-          thumbnail: item.product?.thumbnail || item.product?.image || "",
-          credentials: item.accountCredentials,
-          createdAt: formatted.createdAt,
-        });
-      });
+  return collectDigitalDeliveryEntries(orders, {
+    sourceField: "accountCredentials",
+    outputKey: "credentials",
   });
-
-  return entries;
 }
 
 export const getPremiumAccounts = asyncHandler(async (request, response) => {
@@ -560,7 +572,7 @@ export const markNotificationRead = asyncHandler(async (request, response) => {
   const notification = await NotificationModel.findOneAndUpdate(
     { _id: request.params.id, user: request.user._id },
     { readAt: new Date() },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!notification) {

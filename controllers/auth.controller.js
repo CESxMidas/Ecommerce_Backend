@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import UserModel from "../models/user.model.js";
 import { generateToken } from "../utils/generateToken.js";
 import {
@@ -34,9 +33,24 @@ import {
   verifyGoogleIdToken,
   getGoogleClientIds,
 } from "../utils/googleAuth.js";
+import {
+  OTP_EXPIRY_MS,
+  OTP_PURPOSE,
+  createOtp,
+  hashOtp,
+} from "../utils/otp.js";
 
-function createOtp() {
-  return String(crypto.randomInt(100000, 999999));
+// bcrypt cost factor used everywhere we hash a password.
+const BCRYPT_SALT_ROUNDS = 10;
+
+// Single source of truth for the refresh-token cookie so login & refresh stay in sync.
+function setRefreshTokenCookie(response, refreshToken) {
+  response.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: Number(process.env.JWT_REFRESH_DAYS || 30) * 24 * 60 * 60 * 1000,
+  });
 }
 
 function getSessionMetadata(request) {
@@ -62,49 +76,24 @@ async function sendAuthResponse(user, request, response, statusCode = 200) {
     refreshToken,
   };
 
-  response.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: Number(process.env.JWT_REFRESH_DAYS || 30) * 24 * 60 * 60 * 1000,
-  });
+  setRefreshTokenCookie(response, refreshToken);
   setCsrfCookie(response);
 
   response.status(statusCode).json(payload);
 }
 
-async function saveOtpAndSendVerification(user, otp) {
-  user.forgot_password_otp = otp;
-
-  user.forgot_password_expiry = new Date(Date.now() + 15 * 60 * 1000);
-
-  await user.save();
-
-  const mailResult = await sendVerificationEmail({
-    to: user.email,
-
-    name: user.name,
-
-    otp,
-  });
-
-  assertEmailSent(mailResult);
-
-  return mailResult;
-}
-
-async function saveOtpAndSendPasswordReset(user, otp) {
-  user.forgot_password_otp = otp;
-
-  user.forgot_password_expiry = new Date(Date.now() + 15 * 60 * 1000);
+// Persists a fresh OTP (hashed, scoped to `purpose`) on the user, then delivers
+// the plaintext code via the given mailer. `sendEmail` is sendVerificationEmail
+// or sendPasswordResetEmail — both share the same { to, name, otp } signature.
+async function saveOtpAndSendEmail(user, otp, purpose, sendEmail) {
+  user.forgot_password_otp = hashOtp(user.email, otp, purpose);
+  user.forgot_password_expiry = new Date(Date.now() + OTP_EXPIRY_MS);
 
   await user.save();
 
-  const mailResult = await sendPasswordResetEmail({
+  const mailResult = await sendEmail({
     to: user.email,
-
     name: user.name,
-
     otp,
   });
 
@@ -134,7 +123,7 @@ export const register = asyncHandler(async (request, response) => {
     throw new ApiError(409, "Email already registered");
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
   const verifyOtp = createOtp();
 
@@ -145,9 +134,13 @@ export const register = asyncHandler(async (request, response) => {
 
     password: hashedPassword,
 
-    forgot_password_otp: verifyOtp,
+    forgot_password_otp: hashOtp(
+      normalizedEmail,
+      verifyOtp,
+      OTP_PURPOSE.VERIFY_EMAIL,
+    ),
 
-    forgot_password_expiry: new Date(Date.now() + 15 * 60 * 1000),
+    forgot_password_expiry: new Date(Date.now() + OTP_EXPIRY_MS),
   });
 
   try {
@@ -221,7 +214,12 @@ export const login = asyncHandler(async (request, response) => {
       const verifyOtp = createOtp();
 
       try {
-        await saveOtpAndSendVerification(user, verifyOtp);
+        await saveOtpAndSendEmail(
+          user,
+          verifyOtp,
+          OTP_PURPOSE.VERIFY_EMAIL,
+          sendVerificationEmail,
+        );
         emailSent = true;
       } catch (error) {
         sendErrorMessage =
@@ -276,12 +274,7 @@ export const refreshTokens = asyncHandler(async (request, response) => {
     throw new ApiError(401, "User not found");
   }
 
-  response.cookie("refreshToken", rotated.refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: Number(process.env.JWT_REFRESH_DAYS || 30) * 24 * 60 * 60 * 1000,
-  });
+  setRefreshTokenCookie(response, rotated.refreshToken);
   setCsrfCookie(response);
 
   response.json({
@@ -335,7 +328,12 @@ export const forgotPassword = asyncHandler(async (request, response) => {
   const otp = createOtp();
 
   try {
-    await saveOtpAndSendPasswordReset(user, otp);
+    await saveOtpAndSendEmail(
+      user,
+      otp,
+      OTP_PURPOSE.RESET_PASSWORD,
+      sendPasswordResetEmail,
+    );
   } catch (error) {
     throw new ApiError(
       502,
@@ -392,7 +390,12 @@ export const resendVerification = asyncHandler(async (request, response) => {
   const otp = createOtp();
 
   try {
-    await saveOtpAndSendVerification(user, otp);
+    await saveOtpAndSendEmail(
+      user,
+      otp,
+      OTP_PURPOSE.VERIFY_EMAIL,
+      sendVerificationEmail,
+    );
   } catch (error) {
     throw new ApiError(
       502,
@@ -418,10 +421,16 @@ export const resetPassword = asyncHandler(async (request, response) => {
   if (request.user) {
     user = request.user;
   } else if (email && otp) {
-    user = await UserModel.findOne({
-      email: email.trim().toLowerCase(),
+    const normalizedEmail = email.trim().toLowerCase();
 
-      forgot_password_otp: String(otp).trim(),
+    user = await UserModel.findOne({
+      email: normalizedEmail,
+
+      forgot_password_otp: hashOtp(
+        normalizedEmail,
+        otp,
+        OTP_PURPOSE.RESET_PASSWORD,
+      ),
 
       forgot_password_expiry: { $gt: new Date() },
     });
@@ -437,7 +446,7 @@ export const resetPassword = asyncHandler(async (request, response) => {
     throw new ApiError(400, "Invalid or expired reset code");
   }
 
-  user.password = await bcrypt.hash(password, 10);
+  user.password = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
   user.forgot_password_otp = null;
 
@@ -455,10 +464,16 @@ export const verifyAccount = asyncHandler(async (request, response) => {
 
   const { email, otp } = request.body;
 
-  const user = await UserModel.findOne({
-    email: email.trim().toLowerCase(),
+  const normalizedEmail = email.trim().toLowerCase();
 
-    forgot_password_otp: String(otp).trim(),
+  const user = await UserModel.findOne({
+    email: normalizedEmail,
+
+    forgot_password_otp: hashOtp(
+      normalizedEmail,
+      otp,
+      OTP_PURPOSE.VERIFY_EMAIL,
+    ),
 
     forgot_password_expiry: { $gt: new Date() },
   });
@@ -521,7 +536,9 @@ export const googleLogin = asyncHandler(async (request, response) => {
     throw new ApiError(400, "Email Google chưa được xác minh");
   }
 
-  const normalizedEmail = profile.email;
+  // Normalize the same way local sign-up does so a Google login matches an
+  // existing account instead of creating a case-mismatched duplicate.
+  const normalizedEmail = profile.email.trim().toLowerCase();
 
   let user = await UserModel.findOne({
     $or: [{ googleId: profile.googleId }, { email: normalizedEmail }],

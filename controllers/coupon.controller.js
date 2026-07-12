@@ -64,7 +64,7 @@ export const updateCoupon = asyncHandler(async (request, response) => {
   const coupon = await CouponModel.findByIdAndUpdate(
     request.params.id,
     request.body,
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!coupon) {
@@ -87,7 +87,7 @@ export const deleteCoupon = asyncHandler(async (request, response) => {
   const coupon = await CouponModel.findByIdAndUpdate(
     request.params.id,
     { isActive: false },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!coupon) {

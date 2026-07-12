@@ -139,7 +139,7 @@ export async function reserveKeysForItems(items = [], orderId, session = null) {
       const reserved = await LicenseKeyModel.findOneAndUpdate(
         { productId, status: "available" },
         { $set: { status: "reserved", orderId } },
-        { new: true, session, sort: { createdAt: 1 } },
+        { returnDocument: "after", session, sort: { createdAt: 1 } },
       );
 
       if (!reserved) {
@@ -250,7 +250,7 @@ export async function revokeAvailableKey(productId, keyId) {
       status: "available",
     },
     { $set: { status: "revoked" } },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!doc) {

@@ -106,7 +106,7 @@ export const updateBanner = asyncHandler(async (request, response) => {
   }
 
   const banner = await BannerModel.findByIdAndUpdate(request.params.id, payload, {
-    new: true,
+    returnDocument: "after",
     runValidators: true,
   });
 
@@ -130,7 +130,7 @@ export const deleteBanner = asyncHandler(async (request, response) => {
   const banner = await BannerModel.findByIdAndUpdate(
     request.params.id,
     { isActive: false },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!banner) {

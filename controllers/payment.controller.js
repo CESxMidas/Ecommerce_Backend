@@ -8,7 +8,10 @@ import {
   toVnpayAmount,
 } from "../services/vnpay.service.js";
 import { markPaymentPaid } from "../services/payment.service.js";
-import { markPaymentFailed } from "../utils/orderLifecycle.js";
+import {
+  PAYMENT_WINDOW_MS,
+  markPaymentFailed,
+} from "../utils/orderLifecycle.js";
 
 function getClientRedirect(path) {
   const explicitFrontend = process.env.FRONTEND_URL?.trim().replace(/\/$/, "");
@@ -161,7 +164,7 @@ export const reCreatePaymentUrl = asyncHandler(async (req, res) => {
     throw new ApiError(410, "Payment window has expired");
   }
 
-  const newExpiry = new Date(Date.now() + 5 * 60 * 1000);
+  const newExpiry = new Date(Date.now() + PAYMENT_WINDOW_MS);
 
   await OrderModel.updateOne(
     { orderId },

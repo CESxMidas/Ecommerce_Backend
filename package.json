@@ -20,7 +20,8 @@
     "migrate:categories:v2": "node scripts/migrateCategoriesV2.js",
     "test": "node --test \"test/**/*.test.js\"",
     "test:unit": "node --test test/validators.test.js test/orderLifecycle.test.js test/vnpayAmount.test.js test/vnpaySignature.test.js",
-    "test:integration": "node --test --test-concurrency=1 test/*.api.integration.test.js test/cart-payment.integration.test.js test/race.integration.test.js",
+    "test:integration": "node scripts/testWithMemoryDb.js",
+    "test:integration:local": "node --test --test-concurrency=1 test/*.api.integration.test.js test/cart-payment.integration.test.js test/race.integration.test.js",
     "test:coverage": "node --experimental-test-coverage --test \"test/**/*.test.js\"",
     "seed:test": "node scripts/seedTestData.js",
     "mongo:init-replica": "node scripts/initReplicaSet.js"
@@ -45,6 +46,7 @@
     "nodemailer": "^9.0.3"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^11.2.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
   }

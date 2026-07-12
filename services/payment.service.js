@@ -8,6 +8,7 @@ import { assignDigitalDeliverablesToOrder } from "../utils/digitalDelivery.js";
 import {
   ORDER_STATUS,
   PAYMENT_STATUS,
+  PAYMENT_WINDOW_MS,
   decrementOrderStockOnce,
   markOrderCouponUsedOnce,
   markPaymentFailed,
@@ -43,7 +44,7 @@ export async function createPayment({
 
   const expiresAt =
     initialStatus !== "paid" && provider !== "cod"
-      ? new Date(Date.now() + 5 * 60 * 1000)
+      ? new Date(Date.now() + PAYMENT_WINDOW_MS)
       : undefined;
 
   const [payment] = await PaymentModel.create(

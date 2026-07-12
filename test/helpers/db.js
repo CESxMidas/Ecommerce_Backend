@@ -47,14 +47,14 @@ export async function seedTestData() {
       role: "USER",
       authProvider: "local",
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 
   for (const product of [TEST_PRODUCTS.digital, TEST_PRODUCTS.physical]) {
     await ProductModel.findOneAndUpdate(
       { productId: product.productId },
       { $set: product },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
     );
   }
 

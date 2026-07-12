@@ -12,7 +12,7 @@ export async function getNextSequence(name, initialValue = 0) {
       { _id: name },
       { $inc: { seq: 1 } },
       {
-        new: true,
+        returnDocument: "after",
       },
     );
 
@@ -22,7 +22,7 @@ export async function getNextSequence(name, initialValue = 0) {
       const counter = await CounterModel.findOneAndUpdate(
         { _id: name },
         { $inc: { seq: 1 } },
-        { new: true },
+        { returnDocument: "after" },
       );
 
       return counter.seq;

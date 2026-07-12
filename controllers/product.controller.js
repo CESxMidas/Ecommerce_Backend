@@ -340,7 +340,7 @@ export const updateProduct = asyncHandler(async (request, response) => {
   const product = await ProductModel.findOneAndUpdate(
     { productId },
     { $set: payload },
-    { new: true, runValidators: true },
+    { returnDocument: "after", runValidators: true },
   );
 
   if (!product) {
@@ -365,7 +365,7 @@ export const deleteProduct = asyncHandler(async (request, response) => {
   const product = await ProductModel.findOneAndUpdate(
     { productId },
     { isActive: false },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!product) {
@@ -492,7 +492,7 @@ export const createProductReview = asyncHandler(async (request, response) => {
       comment: normalizedComment,
       verifiedPurchase: true,
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 
   await syncProductReviewStats(productId);
